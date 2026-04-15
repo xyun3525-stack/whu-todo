@@ -36,15 +36,15 @@ class GameLogic:
 
         task.complete()
 
-        base_xp = task.get_xp_reward()
-        xp_bonus = self.player.get_total_xp_bonus()
-        final_xp = int(base_xp * (1 + xp_bonus))
+        # XP固定为基础值（根据优先级），不受建筑加成影响
+        xp_reward = task.get_xp_reward()
+        # 建筑加成在后续任务中自然体现
 
-        leveled_up = self.player.add_xp(final_xp)
+        leveled_up = self.player.add_xp(xp_reward)
 
         dropped_building = self._roll_building_drop()
 
-        return final_xp, dropped_building, leveled_up
+        return xp_reward, dropped_building, leveled_up
 
     def _find_task(self, task_id):
         """根据ID查找任务"""

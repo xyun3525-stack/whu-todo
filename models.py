@@ -118,7 +118,7 @@ class Player:
         return max(0.0, min(1.0, progress))
 
     def expand_grid(self):
-        """扩大网格 (grid_size + 1)，新格子都可用"""
+        """扩大网格 (grid_size + 1)，新增格子为森林（锁定状态）"""
         old_size = self.grid_size
         self.grid_size += 1
         for y in range(self.grid_size):
@@ -126,7 +126,7 @@ class Player:
                 key = f"{x},{y}"
                 if key not in self.grid:
                     self.grid[key] = None
-                    self.available_cells.add(key)
+                    # 新增格子默认是森林，不加入 available_cells
 
     def add_empty_slots(self, count):
         """开垦荒地：从森林格子中解锁指定数量的格子"""

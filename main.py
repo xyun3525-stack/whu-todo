@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-珞珈山养成 - Todo + 升级系统
+珞珈山todo - Todo + 升级系统
 一个结合待办事项和珞珈山建设的 Python GUI 应用
 """
 
@@ -28,8 +28,8 @@ def main():
     game = GameLogic(player, tasks)
 
     root = tk.Tk()
-    root.title("珞珈山养成")
-    root.geometry("800x600")
+    root.title("珞珈山todo")
+    root.geometry("850x650")
     root.resizable(True, True)
 
     app = MainWindow(root, game, storage)

@@ -7,7 +7,7 @@ BUILDINGS = {
     "teaching_building": {
         "id": "teaching_building",
         "name": "教学楼",
-        "emoji": "🏫",
+        "emoji": "🎓",
         "rarity": "common",
         "xp_bonus": 0.05,
         "description": "日常教学场所"
@@ -15,7 +15,7 @@ BUILDINGS = {
     "college_building": {
         "id": "college_building",
         "name": "学院楼",
-        "emoji": "🏢",
+        "emoji": "🏛",
         "rarity": "common",
         "xp_bonus": 0.05,
         "description": "院系办公地点"
@@ -23,7 +23,7 @@ BUILDINGS = {
     "office_building": {
         "id": "office_building",
         "name": "办公楼",
-        "emoji": "🏗️",
+        "emoji": "🏢",
         "rarity": "common",
         "xp_bonus": 0.05,
         "description": "行政管理办公"
@@ -31,7 +31,7 @@ BUILDINGS = {
     "school_gate": {
         "id": "school_gate",
         "name": "校门",
-        "emoji": "🚪",
+        "emoji": "🚩",
         "rarity": "rare",
         "xp_bonus": 0.10,
         "description": "学校门面"
@@ -39,7 +39,7 @@ BUILDINGS = {
     "leijun_building": {
         "id": "leijun_building",
         "name": "雷军楼",
-        "emoji": "🏛️",
+        "emoji": "🏰",
         "rarity": "epic",
         "xp_bonus": 0.20,
         "description": "珞珈山最尊贵建筑！"
