@@ -1,49 +1,49 @@
-"""
-建筑数据定义
-珞珈山上的各类建筑
-"""
-
 BUILDINGS = {
     "teaching_building": {
         "id": "teaching_building",
         "name": "教学楼",
-        "emoji": "🎓",
+        "emoji": "🏫",
         "rarity": "common",
-        "xp_bonus": 0.05,
-        "description": "日常教学场所"
+        "category": "functional",
+        "effects": {"xp_bonus": 0.05},
+        "description": "日常教学场所",
     },
     "college_building": {
         "id": "college_building",
         "name": "学院楼",
-        "emoji": "🏛",
+        "emoji": "🏢",
         "rarity": "common",
-        "xp_bonus": 0.05,
-        "description": "院系办公地点"
+        "category": "functional",
+        "effects": {"weekly_bonus": 0.05},
+        "description": "学院与办公室区域",
     },
     "office_building": {
         "id": "office_building",
         "name": "办公楼",
-        "emoji": "🏢",
+        "emoji": "🏬",
         "rarity": "common",
-        "xp_bonus": 0.05,
-        "description": "行政管理办公"
+        "category": "functional",
+        "effects": {"coin_bonus": 0.05},
+        "description": "行政管理中心",
     },
     "school_gate": {
         "id": "school_gate",
         "name": "校门",
-        "emoji": "🚩",
+        "emoji": "🏛",
         "rarity": "rare",
-        "xp_bonus": 0.10,
-        "description": "学校门面"
+        "category": "landmark",
+        "effects": {"rare_drop_bonus": 0.08},
+        "description": "校园地标入口",
     },
     "leijun_building": {
         "id": "leijun_building",
         "name": "雷军楼",
-        "emoji": "🏰",
+        "emoji": "🌟",
         "rarity": "epic",
-        "xp_bonus": 0.20,
-        "description": "珞珈山最尊贵建筑！"
-    }
+        "category": "landmark",
+        "effects": {"streak_bonus": 0.1, "rare_drop_bonus": 0.12},
+        "description": "高稀有度校园地标",
+    },
 }
 
 RARITY_COLORS = {

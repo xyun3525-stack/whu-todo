@@ -1,126 +1,243 @@
-"""
-游戏逻辑
-XP计算、升级、掉落、网格操作
-"""
-
 import random
+from dataclasses import dataclass
+
 from buildings_data import BUILDINGS, get_building_by_id
 
 
+@dataclass
+class RewardResult:
+    xp: int
+    coins: int
+    campus_points: int
+    leveled_up: bool
+    dropped_building: dict | None
+    streak_days: int
+    weekly_completed: int
+    repeated_task: object | None
+
+
 class GameLogic:
-    """游戏逻辑类"""
+    RARITY_DROP_RATES = {"common": 0.68, "rare": 0.24, "epic": 0.08}
 
-    RARITY_DROP_RATES = {
-        "common": 0.60,
-        "rare": 0.30,
-        "epic": 0.10
-    }
-
-    def __init__(self, player, tasks):
+    def __init__(self, player, campus, collection, tasks):
         self.player = player
+        self.campus = campus
+        self.collection = collection
         self.tasks = tasks
-        self.pending_level_up = False
-
-    def add_task(self, title, priority="normal", deadline=None):
-        """添加任务"""
-        from models import Task
-        task = Task(title, priority, deadline)
-        self.tasks.append(task)
-        return task
-
-    def complete_task(self, task_id):
-        """完成任务，返回 (XP奖励, 掉落建筑, 是否升级)"""
-        task = self._find_task(task_id)
-        if not task or task.completed:
-            return None, None, False
-
-        task.complete()
-
-        # XP固定为基础值（根据优先级），不受建筑加成影响
-        xp_reward = task.get_xp_reward()
-        # 建筑加成在后续任务中自然体现
-
-        leveled_up = self.player.add_xp(xp_reward)
-
-        dropped_building = self._roll_building_drop()
-
-        return xp_reward, dropped_building, leveled_up
 
     def _find_task(self, task_id):
-        """根据ID查找任务"""
         for task in self.tasks:
             if task.id == task_id:
                 return task
         return None
 
-    def delete_task(self, task_id):
-        """删除任务"""
+    def _get_building_effect_bonus(self, effect_name):
+        total = 0.0
+        for building_id in self.collection.inventory:
+            building = get_building_by_id(building_id)
+            if building:
+                total += building.get("effects", {}).get(effect_name, 0.0)
+        for building_id in self.campus.grid.values():
+            if building_id:
+                building = get_building_by_id(building_id)
+                if building:
+                    total += building.get("effects", {}).get(effect_name, 0.0)
+        return total
+
+    def _calculate_fixed_rewards(self, task):
+        base = task.get_xp_reward()
+        duration_bonus = min(task.estimated_minutes, 120) // 30 * 3
+        today_bonus = 4 if task.scheduled_for_today else 0
+        repeat_multiplier = 0.85 if task.repeat_rule != "none" else 1.0
+        micro_multiplier = 0.7 if task.estimated_minutes <= 15 else 1.0
+        streak_multiplier = 1 + min(self.player.streak_days, 5) * 0.03
+        xp_multiplier = 1 + self._get_building_effect_bonus("xp_bonus")
+
+        total_xp = int(
+            (base + duration_bonus + today_bonus)
+            * repeat_multiplier
+            * micro_multiplier
+            * streak_multiplier
+            * xp_multiplier
+        )
+
+        return {
+            "xp": max(total_xp, 6),
+            "coins": max(int(total_xp * (0.3 + self._get_building_effect_bonus("coin_bonus"))), 3),
+            "campus_points": max(int(total_xp * 0.5), 5),
+        }
+
+    def _get_random_building_by_rarity(self, rarity):
+        candidates = [building for building in BUILDINGS.values() if building["rarity"] == rarity]
+        if not candidates:
+            return None
+        return random.choice(candidates)
+
+    def _roll_building_drop(self):
+        rare_bonus = self._get_building_effect_bonus("rare_drop_bonus")
+        roll = random.random()
+        adjusted_rates = {
+            "common": max(self.RARITY_DROP_RATES["common"] - rare_bonus / 2, 0.4),
+            "rare": self.RARITY_DROP_RATES["rare"] + rare_bonus / 2,
+            "epic": self.RARITY_DROP_RATES["epic"] + rare_bonus / 2,
+        }
+        cumulative = 0.0
+        for rarity in ("common", "rare", "epic"):
+            cumulative += adjusted_rates[rarity]
+            if roll < cumulative:
+                return self._get_random_building_by_rarity(rarity)
+        return self._get_random_building_by_rarity("common")
+
+    def add_task(self, title, priority="normal", deadline=None, **extra):
+        from models import Task
+
+        task = Task(
+            title=title,
+            priority=priority,
+            deadline=deadline,
+            tags=extra.get("tags", []),
+            estimated_minutes=extra.get("estimated_minutes", 25),
+            subtasks=extra.get("subtasks", []),
+            repeat_rule=extra.get("repeat_rule", "none"),
+            scheduled_for_today=extra.get("scheduled_for_today", False),
+        )
+        self.tasks.append(task)
+        return task
+
+    def update_task(self, task_id, **changes):
         task = self._find_task(task_id)
-        if task:
-            self.tasks.remove(task)
+        if not task:
+            return None
+        for field in (
+            "title",
+            "priority",
+            "deadline",
+            "tags",
+            "estimated_minutes",
+            "subtasks",
+            "repeat_rule",
+            "scheduled_for_today",
+        ):
+            if field in changes:
+                setattr(task, field, changes[field])
+        return task
+
+    def delete_task(self, task_id):
+        task = self._find_task(task_id)
+        if not task:
+            return False
+        self.tasks.remove(task)
+        return True
+
+    def get_tasks(self, view="planned"):
+        if view == "today":
+            from datetime import date
+
+            return [
+                task
+                for task in self.tasks
+                if not task.completed and (task.scheduled_for_today or task.is_due_today())
+            ]
+        if view == "completed":
+            return [task for task in self.tasks if task.completed]
+        return [task for task in self.tasks if not task.completed]
+
+    def _spawn_repeat_task(self, task):
+        if task.repeat_rule == "none":
+            return None
+        repeated_task = task.copy_for_repeat()
+        self.tasks.append(repeated_task)
+        return repeated_task
+
+    def get_today_summary(self):
+        from datetime import date
+
+        completed_today = [
+            task
+            for task in self.get_tasks("completed")
+            if task.completed_at and task.completed_at.startswith(date.today().isoformat())
+        ]
+        return {
+            "today_count": len(self.get_tasks("today")),
+            "completed_today": len(completed_today),
+            "streak_days": self.player.streak_days,
+            "weekly_completed": self.player.weekly_progress["completed"],
+            "weekly_target": self.player.weekly_progress["target"],
+            "campus_name": self.campus.name,
+            "campus_progress": self.campus.prosperity,
+        }
+
+    def get_growth_summary(self):
+        return {
+            "level": self.player.level,
+            "xp": self.player.xp,
+            "xp_ratio": self.player.get_xp_progress(),
+            "streak_days": self.player.streak_days,
+            "weekly_completed": self.player.weekly_progress["completed"],
+            "weekly_target": self.player.weekly_progress["target"],
+            "catalog_count": len(self.collection.catalog),
+            "inventory_count": len(self.collection.inventory),
+        }
+
+    def get_campus_summary(self):
+        return {
+            "name": self.campus.name,
+            "prosperity": self.campus.prosperity,
+            "grid_size": self.campus.grid_size,
+            "unlocked_cells": len(self.campus.available_cells),
+            "total_cells": self.campus.grid_size * self.campus.grid_size,
+            "regions": self.campus.unlocked_regions,
+            "inventory": list(self.collection.inventory),
+            "grid": dict(self.campus.grid),
+        }
+
+    def rename_campus(self, name):
+        self.campus.rename(name)
+
+    def place_building(self, building_id, x, y):
+        if building_id not in self.collection.inventory:
+            return False
+        if self.campus.place_building(x, y, building_id):
+            self.collection.inventory.remove(building_id)
             return True
         return False
 
-    def get_incomplete_tasks(self):
-        """获取未完成的任务"""
-        return [t for t in self.tasks if not t.completed]
-
-    def get_completed_tasks(self):
-        """获取已完成的任务"""
-        return [t for t in self.tasks if t.completed]
-
-    def _roll_building_drop(self):
-        """随机掉落建筑"""
-        roll = random.random()
-        cumulative = 0.0
-        for rarity, rate in self.RARITY_DROP_RATES.items():
-            cumulative += rate
-            if roll < cumulative:
-                building = self._get_random_building_by_rarity(rarity)
-                if building:
-                    self.player.add_to_inventory(building["id"])
-                return building
-        return None
-
-    def _get_random_building_by_rarity(self, rarity):
-        """根据稀有度获取随机建筑"""
-        candidates = [b for b in BUILDINGS.values() if b["rarity"] == rarity]
-        if candidates:
-            return random.choice(candidates)
-        return None
-
-    def handle_level_up_choice(self, choice):
-        """
-        处理升级选择
-        choice: "expand" (扩大山体) 或 "clearing" (开垦荒地)
-        """
-        if choice == "expand":
-            self.player.expand_grid()
-        elif choice == "clearing":
-            self.player.add_empty_slots(4)
-
-    def place_building(self, building_id, x, y):
-        """放置建筑到网格"""
-        if building_id not in self.player.inventory:
-            return False
-        return self.player.place_building(x, y, building_id)
-
     def get_building_info(self, building_id):
-        """获取建筑信息"""
         return get_building_by_id(building_id)
 
-    def get_grid_display(self):
-        """获取网格显示信息"""
-        grid = []
-        for y in range(self.player.grid_size):
-            row = []
-            for x in range(self.player.grid_size):
-                key = f"{x},{y}"
-                building_id = self.player.grid.get(key)
-                if building_id:
-                    building = get_building_by_id(building_id)
-                    row.append(building["emoji"] if building else "❓")
-                else:
-                    row.append("⬜")
-            grid.append(row)
-        return grid
+    def to_state(self):
+        return {
+            "player": self.player.to_dict(),
+            "campus": self.campus.to_dict(),
+            "collection": self.collection.to_dict(),
+            "tasks": [task.to_dict() for task in self.tasks],
+            "settings": {"theme_name": "campus"},
+        }
+
+    def complete_task(self, task_id):
+        task = self._find_task(task_id)
+        if not task or task.completed:
+            return None
+
+        rewards = self._calculate_fixed_rewards(task)
+        task.complete()
+        self.player.register_completion()
+        leveled_up = self.player.add_xp(rewards["xp"])
+        self.player.coins += rewards["coins"]
+        self.campus.add_prosperity(rewards["campus_points"])
+
+        dropped_building = self._roll_building_drop()
+        if dropped_building:
+            self.collection.add_building(dropped_building["id"])
+
+        repeated_task = self._spawn_repeat_task(task)
+        return RewardResult(
+            xp=rewards["xp"],
+            coins=rewards["coins"],
+            campus_points=rewards["campus_points"],
+            leveled_up=leveled_up,
+            dropped_building=dropped_building,
+            streak_days=self.player.streak_days,
+            weekly_completed=self.player.weekly_progress["completed"],
+            repeated_task=repeated_task,
+        )
