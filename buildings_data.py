@@ -1,78 +1,78 @@
+"""Static building definitions used by reward and campus systems."""
+
 BUILDINGS = {
     "teaching_building": {
         "id": "teaching_building",
-        "name": "教学楼",
+        "name": "Teaching Hall",
         "emoji": "🏫",
         "rarity": "common",
         "category": "functional",
         "effects": {"xp_bonus": 0.05},
-        "description": "日常教学场所",
+        "description": "Core teaching area.",
     },
     "college_building": {
         "id": "college_building",
-        "name": "学院楼",
+        "name": "College Block",
         "emoji": "🏢",
         "rarity": "common",
         "category": "functional",
         "effects": {"weekly_bonus": 0.05},
-        "description": "学院与办公室区域",
+        "description": "College and faculty offices.",
     },
     "office_building": {
         "id": "office_building",
-        "name": "办公楼",
+        "name": "Office Center",
         "emoji": "🏬",
         "rarity": "common",
         "category": "functional",
         "effects": {"coin_bonus": 0.05},
-        "description": "行政管理中心",
+        "description": "Administrative center.",
     },
     "school_gate": {
         "id": "school_gate",
-        "name": "校门",
+        "name": "Main Gate",
         "emoji": "🏛",
         "rarity": "rare",
         "category": "landmark",
         "effects": {"rare_drop_bonus": 0.08},
-        "description": "校园地标入口",
+        "description": "Campus landmark gate.",
     },
     "leijun_building": {
         "id": "leijun_building",
-        "name": "雷军楼",
+        "name": "Innovation Tower",
         "emoji": "🌟",
         "rarity": "epic",
         "category": "landmark",
         "effects": {"streak_bonus": 0.1, "rare_drop_bonus": 0.12},
-        "description": "高稀有度校园地标",
+        "description": "High-rarity landmark building.",
     },
 }
 
 RARITY_COLORS = {
     "common": "#888888",
     "rare": "#4169E1",
-    "epic": "#FFD700"
+    "epic": "#FFD700",
 }
 
 RARITY_NAMES = {
-    "common": "普通",
-    "rare": "稀有",
-    "epic": "史诗"
+    "common": "Common",
+    "rare": "Rare",
+    "epic": "Epic",
 }
 
 
 def get_all_buildings():
-    """返回所有建筑的列表"""
     return list(BUILDINGS.values())
 
 
 def get_building_by_id(building_id):
-    """根据ID获取建筑数据"""
     return BUILDINGS.get(building_id)
 
 
 def get_random_building_by_rarity(rarity):
-    """根据稀有度获取随机建筑"""
-    candidates = [b for b in BUILDINGS.values() if b["rarity"] == rarity]
-    if candidates:
-        import random
-        return candidates[random.randint(0, len(candidates) - 1)]
-    return None
+    candidates = [item for item in BUILDINGS.values() if item["rarity"] == rarity]
+    if not candidates:
+        return None
+    import random
+
+    return random.choice(candidates)

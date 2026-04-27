@@ -1,9 +1,15 @@
+"""Domain models for the app state."""
+
 import uuid
 from datetime import date, datetime, timedelta
 
 
 class Task:
-    PRIORITY_XP = {"normal": 12, "important": 20, "urgent": 30}
+    PRIORITY_XP = {
+        "normal": 12,
+        "important": 20,
+        "urgent": 30,
+    }
 
     def __init__(
         self,
@@ -40,7 +46,10 @@ class Task:
     def is_overdue(self):
         if not self.deadline or self.completed:
             return False
-        deadline_date = datetime.strptime(self.deadline, "%Y-%m-%d").date()
+        try:
+            deadline_date = datetime.strptime(self.deadline, "%Y-%m-%d").date()
+        except ValueError:
+            return False
         return date.today() > deadline_date
 
     def is_due_today(self):
@@ -49,11 +58,12 @@ class Task:
     def copy_for_repeat(self):
         next_deadline = None
         if self.deadline and self.repeat_rule in {"daily", "weekly"}:
-            step = 1 if self.repeat_rule == "daily" else 7
+            delta = 1 if self.repeat_rule == "daily" else 7
             next_deadline = (
-                datetime.strptime(self.deadline, "%Y-%m-%d") + timedelta(days=step)
+                datetime.strptime(self.deadline, "%Y-%m-%d") + timedelta(days=delta)
             ).strftime("%Y-%m-%d")
-        clone = Task(
+
+        cloned = Task(
             title=self.title,
             priority=self.priority,
             deadline=next_deadline,
@@ -63,7 +73,7 @@ class Task:
             repeat_rule=self.repeat_rule,
             scheduled_for_today=False,
         )
-        return clone
+        return cloned
 
     def to_dict(self):
         return {
@@ -84,9 +94,9 @@ class Task:
     @classmethod
     def from_dict(cls, data):
         task = cls(
-            data["title"],
-            data.get("priority", "normal"),
-            data.get("deadline"),
+            title=data["title"],
+            priority=data.get("priority", "normal"),
+            deadline=data.get("deadline"),
             tags=data.get("tags", []),
             estimated_minutes=data.get("estimated_minutes", 25),
             subtasks=data.get("subtasks", []),
@@ -94,7 +104,7 @@ class Task:
             completed_at=data.get("completed_at"),
             scheduled_for_today=data.get("scheduled_for_today", False),
         )
-        task.id = data["id"]
+        task.id = data.get("id") or str(uuid.uuid4())[:8]
         task.completed = data.get("completed", False)
         task.created_at = data.get("created_at", datetime.now().isoformat())
         return task
@@ -142,7 +152,11 @@ class Player:
         week_key = timestamp.strftime("%G-W%V")
 
         if self.weekly_progress.get("week_key") != week_key:
-            self.weekly_progress = {"completed": 0, "target": 15, "week_key": week_key}
+            self.weekly_progress = {
+                "completed": 0,
+                "target": 15,
+                "week_key": week_key,
+            }
 
         self.weekly_progress["completed"] += 1
 
@@ -151,11 +165,9 @@ class Player:
         else:
             previous = datetime.strptime(self.last_completed_on, "%Y-%m-%d").date()
             delta_days = (timestamp.date() - previous).days
-            if delta_days == 0:
-                pass
-            elif delta_days == 1:
+            if delta_days == 1:
                 self.streak_days += 1
-            else:
+            elif delta_days > 1:
                 self.streak_days = 1
 
         self.last_completed_on = today_iso
@@ -166,7 +178,7 @@ class Player:
         return self.LEVEL_THRESHOLDS[self.level]
 
     def get_xp_progress(self):
-        if self.level >= len(self.LEVEL_THRESHOLDS):
+        if self.level <= 0 or self.level >= len(self.LEVEL_THRESHOLDS):
             return 1.0
         current_threshold = self.LEVEL_THRESHOLDS[self.level - 1]
         next_threshold = self.LEVEL_THRESHOLDS[self.level]
@@ -198,7 +210,7 @@ class Player:
 class Campus:
     def __init__(
         self,
-        name="珞珈山",
+        name="Luojia Hill",
         grid_size=2,
         available_cells=None,
         grid=None,
@@ -214,9 +226,14 @@ class Campus:
         self._ensure_grid()
 
     def _ensure_grid(self):
+        valid = {f"{x},{y}" for x in range(self.grid_size) for y in range(self.grid_size)}
         for y in range(self.grid_size):
             for x in range(self.grid_size):
                 self.grid.setdefault(f"{x},{y}", None)
+        for key in list(self.grid):
+            if key not in valid:
+                del self.grid[key]
+        self.available_cells &= valid
 
     def rename(self, name):
         self.name = name.strip() or self.name
@@ -238,6 +255,7 @@ class Campus:
                 key = f"{x},{y}"
                 if key not in self.available_cells:
                     candidates.append(key)
+
         for key in candidates[:count]:
             self.available_cells.add(key)
 
@@ -267,7 +285,7 @@ class Campus:
     @classmethod
     def from_dict(cls, data):
         return cls(
-            name=data.get("name", "珞珈山"),
+            name=data.get("name", "Luojia Hill"),
             grid_size=data.get("grid_size", 2),
             available_cells=set(data.get("available_cells", ["0,0", "1,0", "0,1", "1,1"])),
             grid=data.get("grid", {}),
@@ -309,8 +327,3 @@ class Collection:
             fragments=data.get("fragments", {}),
             pity_counter=data.get("pity_counter", 0),
         )
-
-
-# Legacy compatibility - keep old class names for existing code
-TaskV1 = Task
-Player = Player

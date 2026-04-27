@@ -7,13 +7,17 @@ from models import Campus, Collection, Player, Task
 from storage import Storage
 from ui.main_window import MainWindow
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+try:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+except AttributeError:
+    pass
 
 
 def main():
     storage = Storage()
     state = storage.load_state()
+
     player = Player.from_dict(state["player"])
     campus = Campus.from_dict(state["campus"])
     collection = Collection.from_dict(state["collection"])
@@ -21,7 +25,7 @@ def main():
     game = GameLogic(player, campus, collection, tasks)
 
     root = tk.Tk()
-    root.title("珞珈山养成 Todo")
+    root.title("Gamified Todo Campus")
     root.geometry("980x720")
     root.resizable(True, True)
 

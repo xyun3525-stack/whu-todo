@@ -13,6 +13,7 @@ class MainWindow(tk.Frame):
         super().__init__(parent)
         self.game = game
         self.storage = storage
+
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -22,12 +23,18 @@ class MainWindow(tk.Frame):
         self.growth_tab = GrowthTab(self.notebook, self.game)
         self.settings_tab = SettingsTab(self.notebook, self.game, self.storage)
 
-        self.notebook.add(self.today_tab, text="今日")
-        self.notebook.add(self.tasks_tab, text="任务")
-        self.notebook.add(self.campus_tab, text="校园")
-        self.notebook.add(self.growth_tab, text="成长")
-        self.notebook.add(self.settings_tab, text="设置")
+        self.notebook.add(self.today_tab, text="Today")
+        self.notebook.add(self.tasks_tab, text="Tasks")
+        self.notebook.add(self.campus_tab, text="Campus")
+        self.notebook.add(self.growth_tab, text="Growth")
+        self.notebook.add(self.settings_tab, text="Settings")
+
+        parent.protocol("WM_DELETE_WINDOW", self._on_close)
         self.refresh_all()
+
+    def _on_close(self):
+        self.storage.save_state(self.game.to_state())
+        self.winfo_toplevel().destroy()
 
     def handle_state_change(self):
         self.storage.save_state(self.game.to_state())

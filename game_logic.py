@@ -1,7 +1,9 @@
 import random
 from dataclasses import dataclass
+from datetime import datetime
 
 from buildings_data import BUILDINGS, get_building_by_id
+from models import Campus, Collection, Player, Task
 
 
 @dataclass
@@ -50,7 +52,7 @@ class GameLogic:
         today_bonus = 4 if task.scheduled_for_today else 0
         repeat_multiplier = 0.85 if task.repeat_rule != "none" else 1.0
         micro_multiplier = 0.7 if task.estimated_minutes <= 15 else 1.0
-        streak_multiplier = 1 + min(self.player.streak_days, 5) * 0.03
+        streak_multiplier = 1 + min(self.player.streak_days, 10) * 0.03
         xp_multiplier = 1 + self._get_building_effect_bonus("xp_bonus")
 
         total_xp = int(
@@ -76,21 +78,22 @@ class GameLogic:
     def _roll_building_drop(self):
         rare_bonus = self._get_building_effect_bonus("rare_drop_bonus")
         roll = random.random()
-        adjusted_rates = {
+        raw_rates = {
             "common": max(self.RARITY_DROP_RATES["common"] - rare_bonus / 2, 0.4),
             "rare": self.RARITY_DROP_RATES["rare"] + rare_bonus / 2,
             "epic": self.RARITY_DROP_RATES["epic"] + rare_bonus / 2,
         }
+        total = sum(raw_rates.values())
+        if total <= 0:
+            return None
         cumulative = 0.0
         for rarity in ("common", "rare", "epic"):
-            cumulative += adjusted_rates[rarity]
+            cumulative += raw_rates[rarity] / total
             if roll < cumulative:
                 return self._get_random_building_by_rarity(rarity)
         return self._get_random_building_by_rarity("common")
 
     def add_task(self, title, priority="normal", deadline=None, **extra):
-        from models import Task
-
         task = Task(
             title=title,
             priority=priority,
@@ -131,8 +134,6 @@ class GameLogic:
 
     def get_tasks(self, view="planned"):
         if view == "today":
-            from datetime import date
-
             return [
                 task
                 for task in self.tasks
@@ -150,12 +151,11 @@ class GameLogic:
         return repeated_task
 
     def get_today_summary(self):
-        from datetime import date
-
+        today = datetime.now().date()
         completed_today = [
             task
             for task in self.get_tasks("completed")
-            if task.completed_at and task.completed_at.startswith(date.today().isoformat())
+            if task.completed_at and task.completed_at.startswith(today.isoformat())
         ]
         return {
             "today_count": len(self.get_tasks("today")),
@@ -194,8 +194,16 @@ class GameLogic:
     def rename_campus(self, name):
         self.campus.rename(name)
 
+    def reset_state(self):
+        self.player = Player()
+        self.campus = Campus()
+        self.collection = Collection()
+        self.tasks = []
+
     def place_building(self, building_id, x, y):
         if building_id not in self.collection.inventory:
+            return False
+        if get_building_by_id(building_id) is None:
             return False
         if self.campus.place_building(x, y, building_id):
             self.collection.inventory.remove(building_id)
@@ -221,7 +229,8 @@ class GameLogic:
 
         rewards = self._calculate_fixed_rewards(task)
         task.complete()
-        self.player.register_completion()
+        completed_dt = datetime.fromisoformat(task.completed_at)
+        self.player.register_completion(completed_at=completed_dt)
         leveled_up = self.player.add_xp(rewards["xp"])
         self.player.coins += rewards["coins"]
         self.campus.add_prosperity(rewards["campus_points"])

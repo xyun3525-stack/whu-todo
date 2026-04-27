@@ -1,6 +1,6 @@
 import unittest
 
-from models import Campus, Collection, Player, Task
+from models import Campus, Collection, Task
 
 
 class TaskModelTests(unittest.TestCase):
@@ -25,7 +25,7 @@ class TaskModelTests(unittest.TestCase):
 class CampusModelTests(unittest.TestCase):
     def test_campus_round_trip_preserves_name_and_grid(self):
         campus = Campus(
-            name="珞珈山",
+            name="Luojia Hill",
             grid_size=3,
             available_cells={"0,0", "1,0"},
             grid={"0,0": "school_gate"},
@@ -35,7 +35,7 @@ class CampusModelTests(unittest.TestCase):
 
         restored = Campus.from_dict(campus.to_dict())
 
-        self.assertEqual(restored.name, "珞珈山")
+        self.assertEqual(restored.name, "Luojia Hill")
         self.assertEqual(restored.grid["0,0"], "school_gate")
         self.assertEqual(restored.unlocked_regions, ["core", "library"])
 

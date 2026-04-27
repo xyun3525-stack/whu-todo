@@ -8,8 +8,8 @@ from storage import Storage
 
 class IntegrationTests(unittest.TestCase):
     def test_complete_flow_saves_and_reloads_v2_state(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            data_path = f"{tmpdir}/data.json"
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            data_path = f"{tmp_dir}/data.json"
             storage = Storage(data_path)
 
             player = Player()
@@ -18,12 +18,12 @@ class IntegrationTests(unittest.TestCase):
             task = Task("Ship V2", scheduled_for_today=True, repeat_rule="daily")
             logic = GameLogic(player, campus, collection, [task])
 
-            logic.rename_campus("珞珈新峰")
+            logic.rename_campus("Luojia Peak")
             result = logic.complete_task(task.id)
             storage.save_state(logic.to_state())
             reloaded = storage.load_state()
 
-        self.assertEqual(reloaded["campus"]["name"], "珞珈新峰")
+        self.assertEqual(reloaded["campus"]["name"], "Luojia Peak")
         self.assertEqual(reloaded["player"]["streak_days"], 1)
         self.assertEqual(len(reloaded["tasks"]), 2)
         self.assertEqual(reloaded["tasks"][1]["repeat_rule"], "daily")

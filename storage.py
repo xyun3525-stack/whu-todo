@@ -95,8 +95,11 @@ class Storage:
 
     def save_player(self, player):
         state = self.load_state()
-        payload = player.to_dict() if hasattr(player, "to_dict") else dict(player or {})
-        if not isinstance(payload, dict):
+        if hasattr(player, "to_dict"):
+            payload = player.to_dict()
+        elif isinstance(player, dict):
+            payload = dict(player)
+        else:
             payload = {}
 
         if not isinstance(state.get("player"), dict):
