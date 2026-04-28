@@ -11,6 +11,19 @@ from ui.tabs.tasks_tab import TasksTab
 from ui.tabs.today_tab import TodayTab
 
 
+def _display_available():
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        root.destroy()
+        return True
+    except tk.TclError:
+        return False
+
+
+DISPLAY_AVAILABLE = _display_available()
+
+
 class DummyStorage:
     def __init__(self):
         self.saved_state = None
@@ -19,6 +32,7 @@ class DummyStorage:
         self.saved_state = state
 
 
+@unittest.skipUnless(DISPLAY_AVAILABLE, "Tk smoke tests require a working display.")
 class UIShellTests(unittest.TestCase):
     def test_main_window_exposes_v2_tabs(self):
         root = tk.Tk()
@@ -36,6 +50,7 @@ class UIShellTests(unittest.TestCase):
         root.destroy()
 
 
+@unittest.skipUnless(DISPLAY_AVAILABLE, "Tk smoke tests require a working display.")
 class TodayAndGrowthTabTests(unittest.TestCase):
     def test_today_and_growth_tabs_render_summary_text(self):
         root = tk.Tk()
@@ -66,6 +81,7 @@ class TodayAndGrowthTabTests(unittest.TestCase):
         root.destroy()
 
 
+@unittest.skipUnless(DISPLAY_AVAILABLE, "Tk smoke tests require a working display.")
 class TasksTabTests(unittest.TestCase):
     def test_tasks_tab_switches_between_today_planned_and_completed(self):
         root = tk.Tk()
@@ -89,6 +105,7 @@ class TasksTabTests(unittest.TestCase):
         root.destroy()
 
 
+@unittest.skipUnless(DISPLAY_AVAILABLE, "Tk smoke tests require a working display.")
 class CampusTabTests(unittest.TestCase):
     def test_campus_tab_applies_new_campus_name(self):
         root = tk.Tk()
@@ -103,6 +120,7 @@ class CampusTabTests(unittest.TestCase):
         root.destroy()
 
 
+@unittest.skipUnless(DISPLAY_AVAILABLE, "Tk smoke tests require a working display.")
 class SettingsTabTests(unittest.TestCase):
     def test_settings_tab_refresh_shows_campus_and_inventory_summary(self):
         root = tk.Tk()

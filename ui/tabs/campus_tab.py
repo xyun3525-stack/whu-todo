@@ -57,6 +57,7 @@ class CampusTab(tk.Frame):
         cell_x = event.x // self.CELL_SIZE
         cell_y = event.y // self.CELL_SIZE
         if cell_x >= self.game.campus.grid_size or cell_y >= self.game.campus.grid_size:
+            messagebox.showwarning("Out of Range", "Click inside the grid area.", parent=self)
             return
         if self.game.place_building(self.selected_building, cell_x, cell_y):
             self.selected_building = None

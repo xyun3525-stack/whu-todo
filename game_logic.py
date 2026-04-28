@@ -12,6 +12,8 @@ class RewardResult:
     coins: int
     campus_points: int
     leveled_up: bool
+    new_level: int
+    upgrade_options: list
     dropped_building: dict | None
     streak_days: int
     weekly_completed: int
@@ -210,6 +212,28 @@ class GameLogic:
             return True
         return False
 
+    def get_upgrade_options(self):
+        return [
+            {
+                "type": "expand_campus",
+                "label": "扩大山体",
+                "desc": f"网格扩至 {self.campus.grid_size + 1}x{self.campus.grid_size + 1}，新格子全部可用",
+                "new_grid_size": self.campus.grid_size + 1,
+            },
+            {
+                "type": "unlock_cells",
+                "label": "开垦荒地",
+                "desc": f"额外解锁 2 格（当前 {len(self.campus.available_cells)}/{self.campus.grid_size * self.campus.grid_size} 格）",
+                "cells_gained": 2,
+            },
+        ]
+
+    def apply_upgrade_choice(self, choice_type):
+        if choice_type == "expand_campus":
+            self.campus.expand_grid()
+        elif choice_type == "unlock_cells":
+            self.campus.add_empty_slots(2)
+
     def get_building_info(self, building_id):
         return get_building_by_id(building_id)
 
@@ -245,6 +269,8 @@ class GameLogic:
             coins=rewards["coins"],
             campus_points=rewards["campus_points"],
             leveled_up=leveled_up,
+            new_level=self.player.level if leveled_up else 0,
+            upgrade_options=self.get_upgrade_options() if leveled_up else [],
             dropped_building=dropped_building,
             streak_days=self.player.streak_days,
             weekly_completed=self.player.weekly_progress["completed"],

@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 
+from ui.dialogs.level_up_dialog import LevelUpDialog
 from ui.dialogs.reward_dialog import RewardDialog
 
 
@@ -80,8 +81,18 @@ class TodayTab(tk.Frame):
         if not result:
             return
 
+        if result.leveled_up:
+            dialog = LevelUpDialog(
+                self, result.new_level, result.upgrade_options, self._handle_upgrade
+            )
+            self.wait_window(dialog)
+
         dialog = RewardDialog(self, result)
         self.wait_window(dialog)
+        self.on_change()
+
+    def _handle_upgrade(self, choice_type):
+        self.game.apply_upgrade_choice(choice_type)
         self.on_change()
 
     def refresh(self):

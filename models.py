@@ -165,9 +165,11 @@ class Player:
         else:
             previous = datetime.strptime(self.last_completed_on, "%Y-%m-%d").date()
             delta_days = (timestamp.date() - previous).days
-            if delta_days == 1:
+            if delta_days == 0:
+                pass
+            elif delta_days == 1:
                 self.streak_days += 1
-            elif delta_days > 1:
+            else:
                 self.streak_days = 1
 
         self.last_completed_on = today_iso
@@ -178,7 +180,9 @@ class Player:
         return self.LEVEL_THRESHOLDS[self.level]
 
     def get_xp_progress(self):
-        if self.level <= 0 or self.level >= len(self.LEVEL_THRESHOLDS):
+        if self.level <= 0:
+            return 0.0
+        if self.level >= len(self.LEVEL_THRESHOLDS):
             return 1.0
         current_threshold = self.LEVEL_THRESHOLDS[self.level - 1]
         next_threshold = self.LEVEL_THRESHOLDS[self.level]
@@ -243,10 +247,17 @@ class Campus:
         if self.prosperity >= 50 and "library" not in self.unlocked_regions:
             self.unlocked_regions.append("library")
             self.add_empty_slots(2)
+            self.prosperity -= 50
 
     def expand_grid(self):
+        old_size = self.grid_size
         self.grid_size += 1
         self._ensure_grid()
+        for y in range(old_size, self.grid_size):
+            for x in range(self.grid_size):
+                self.available_cells.add(f"{x},{y}")
+        for x in range(old_size):
+            self.available_cells.add(f"{x},{self.grid_size - 1}")
 
     def add_empty_slots(self, count):
         candidates = []

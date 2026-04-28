@@ -72,6 +72,17 @@ class TaskDialog(tk.Toplevel):
             messagebox.showwarning("Invalid Input", "Task title cannot be empty.", parent=self)
             return
 
+        deadline = self.deadline_var.get().strip()
+        if deadline:
+            try:
+                from datetime import datetime
+                datetime.strptime(deadline, "%Y-%m-%d")
+            except ValueError:
+                messagebox.showwarning(
+                    "Invalid Input", "Deadline must be in YYYY-MM-DD format.", parent=self
+                )
+                return
+
         try:
             estimated_minutes = int(self.minutes_var.get())
         except ValueError:
@@ -89,7 +100,7 @@ class TaskDialog(tk.Toplevel):
         self.result = {
             "title": title,
             "priority": self.priority_var.get(),
-            "deadline": self.deadline_var.get().strip() or None,
+            "deadline": deadline or None,
             "estimated_minutes": estimated_minutes,
             "repeat_rule": self.repeat_var.get(),
             "scheduled_for_today": self.today_var.get(),
