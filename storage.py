@@ -7,7 +7,7 @@ from copy import deepcopy
 from datetime import datetime
 
 DATA_FILE = "data.json"
-CURRENT_DATA_VERSION = 2
+CURRENT_DATA_VERSION = 3
 
 LOAD_STATUS_OK = "ok"
 LOAD_STATUS_MISSING = "missing"
@@ -25,7 +25,7 @@ DEFAULT_STATE = {
         "weekly_progress": {"completed": 0, "target": 15, "week_key": ""},
     },
     "campus": {
-        "name": "Luojia Hill",
+        "name": "珞珈山",
         "grid_size": 2,
         "available_cells": ["0,0", "1,0", "0,1", "1,1"],
         "grid": {},
@@ -39,7 +39,7 @@ DEFAULT_STATE = {
         "pity_counter": 0,
     },
     "tasks": [],
-    "settings": {"theme_name": "campus"},
+    "settings": {"theme_name": "campus", "custom_icons": {}},
 }
 
 TASK_DEFAULTS = {
@@ -49,6 +49,10 @@ TASK_DEFAULTS = {
     "repeat_rule": "none",
     "completed_at": None,
     "scheduled_for_today": False,
+}
+
+LEGACY_DEFAULT_CAMPUS_NAMES = {
+    "Luojia Hill": "珞珈山",
 }
 
 
@@ -202,11 +206,16 @@ class Storage:
             merged["player"].update(state.get("player", {}))
         if isinstance(state.get("campus"), dict):
             merged["campus"].update(state.get("campus", {}))
+        campus_name = merged["campus"].get("name")
+        if campus_name in LEGACY_DEFAULT_CAMPUS_NAMES:
+            merged["campus"]["name"] = LEGACY_DEFAULT_CAMPUS_NAMES[campus_name]
         if isinstance(state.get("collection"), dict):
             merged["collection"].update(state.get("collection", {}))
         merged["tasks"] = self._normalize_tasks(state.get("tasks", []))
         if isinstance(state.get("settings"), dict):
             merged["settings"].update(state.get("settings", {}))
+        if "custom_icons" not in merged["settings"]:
+            merged["settings"]["custom_icons"] = {}
         for key, value in state.items():
             if key not in {"version", "player", "campus", "collection", "tasks", "settings"}:
                 merged[key] = deepcopy(value)
@@ -236,7 +245,22 @@ class Storage:
         if "version" not in data:
             return self._migrate_legacy_data(data)
 
+        version = data.get("version", 0)
+        if version < CURRENT_DATA_VERSION:
+            data = self._migrate_to_v3(data)
+
         return self._normalize_state(data)
+
+    def _migrate_to_v3(self, data):
+        # v2 -> v3: add custom_icons to settings
+        data = deepcopy(data)
+        if isinstance(data.get("settings"), dict):
+            if "custom_icons" not in data["settings"]:
+                data["settings"]["custom_icons"] = {}
+        else:
+            data["settings"] = {"custom_icons": {}}
+        data["version"] = 3
+        return data
 
     def _migrate_legacy_data(self, data):
         migrated = deepcopy(DEFAULT_STATE)
@@ -266,6 +290,8 @@ class Storage:
             migrated["collection"].update(data["collection"])
         if isinstance(data.get("settings"), dict):
             migrated["settings"].update(data["settings"])
+        if "custom_icons" not in migrated["settings"]:
+            migrated["settings"]["custom_icons"] = {}
 
         migrated["tasks"] = self._normalize_tasks(data.get("tasks", []))
         for key, value in data.items():

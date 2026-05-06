@@ -3,35 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gamified Todo Campus</title>
+    <title>校园成长待办</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <div class="page-shell">
       <header class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">WEB CAMPUS UI</p>
-          <h1>Gamified Todo Campus</h1>
-          <p class="hero-text">
-            保留原有任务、成长、校园建设机制，只把交互壳切换到浏览器。
-          </p>
+          <p class="eyebrow">网页校园界面</p>
+          <h1>校园成长待办</h1>
+          <div class="hero-quote" id="hero-quote">
+            <p class="hero-quote-tag">此刻小句</p>
+            <p class="hero-quote-line" id="hero-quote-line"></p>
+            <p class="hero-quote-note" id="hero-quote-note"></p>
+            <div class="hero-quote-dots" id="hero-quote-dots"></div>
+          </div>
         </div>
         <div class="hero-stats" id="hero-stats"></div>
       </header>
 
       <nav class="tab-bar">
-        <button class="tab-link active" data-view="today">Today</button>
-        <button class="tab-link" data-view="tasks">Tasks</button>
-        <button class="tab-link" data-view="campus">Campus</button>
-        <button class="tab-link" data-view="growth">Growth</button>
-        <button class="tab-link" data-view="settings">Settings</button>
+        <button class="tab-link active" data-view="today">今日</button>
+        <button class="tab-link" data-view="tasks">任务</button>
+        <button class="tab-link" data-view="campus">校园</button>
+        <button class="tab-link" data-view="growth">成长</button>
+        <button class="tab-link" data-view="settings">设置</button>
       </nav>
 
       <main class="view-stack">
         <section class="view active" data-panel="today">
           <div class="two-up">
             <article class="card overview-card">
-              <p class="card-kicker">Today Overview</p>
+              <p class="card-kicker">今日概览</p>
               <h2 id="today-summary-title">加载中...</h2>
               <p class="muted" id="today-summary-meta"></p>
               <div class="pill-row" id="today-pills"></div>
@@ -40,7 +43,7 @@
             <article class="card">
               <div class="card-head">
                 <div>
-                  <p class="card-kicker">Quick Add</p>
+                  <p class="card-kicker">快速添加</p>
                   <h3>快速塞进今天任务栏</h3>
                 </div>
               </div>
@@ -49,7 +52,7 @@
                   <span>任务标题</span>
                   <input id="quick-task-title" name="title" type="text" placeholder="比如：整理实验数据" />
                 </label>
-                <button class="primary-btn" type="submit">加入 Today</button>
+                <button class="primary-btn" type="submit">加入今日</button>
               </form>
             </article>
           </div>
@@ -57,7 +60,7 @@
           <article class="card">
             <div class="card-head">
               <div>
-                <p class="card-kicker">Today Tasks</p>
+                <p class="card-kicker">今日任务</p>
                 <h3>今天要推进的事项</h3>
               </div>
             </div>
@@ -70,7 +73,7 @@
             <article class="card">
               <div class="card-head">
                 <div>
-                  <p class="card-kicker">Task Composer</p>
+                  <p class="card-kicker">任务编辑</p>
                   <h3 id="task-form-heading">新建任务</h3>
                 </div>
                 <button class="ghost-btn" id="task-form-reset" type="button">清空</button>
@@ -86,9 +89,9 @@
                   <label>
                     <span>优先级</span>
                     <select id="task-priority" name="priority">
-                      <option value="normal">normal</option>
-                      <option value="important">important</option>
-                      <option value="urgent">urgent</option>
+                      <option value="normal">普通</option>
+                      <option value="important">重要</option>
+                      <option value="urgent">紧急</option>
                     </select>
                   </label>
                   <label>
@@ -105,16 +108,16 @@
                   <label>
                     <span>重复</span>
                     <select id="task-repeat" name="repeat_rule">
-                      <option value="none">none</option>
-                      <option value="daily">daily</option>
-                      <option value="weekly">weekly</option>
+                      <option value="none">不重复</option>
+                      <option value="daily">每天</option>
+                      <option value="weekly">每周</option>
                     </select>
                   </label>
                 </div>
 
                 <label class="checkbox-row">
                   <input id="task-today" name="scheduled_for_today" type="checkbox" />
-                  <span>Pin to Today</span>
+                  <span>加入今日</span>
                 </label>
 
                 <button class="primary-btn" id="task-submit" type="submit">保存任务</button>
@@ -124,15 +127,15 @@
             <article class="card">
               <div class="card-head">
                 <div>
-                  <p class="card-kicker">Task Board</p>
+                  <p class="card-kicker">任务看板</p>
                   <h3>任务总览</h3>
                 </div>
               </div>
 
               <div class="segmented-control" id="task-view-switcher">
-                <button class="segment active" data-task-view="planned" type="button">Planned</button>
-                <button class="segment" data-task-view="today" type="button">Today</button>
-                <button class="segment" data-task-view="completed" type="button">Completed</button>
+                <button class="segment active" data-task-view="planned" type="button">待办</button>
+                <button class="segment" data-task-view="today" type="button">今日</button>
+                <button class="segment" data-task-view="completed" type="button">已完成</button>
               </div>
 
               <div id="task-list" class="task-grid"></div>
@@ -145,7 +148,7 @@
             <article class="card">
               <div class="card-head">
                 <div>
-                  <p class="card-kicker">Campus Identity</p>
+                  <p class="card-kicker">校园信息</p>
                   <h3 id="campus-name-heading">校园名称</h3>
                 </div>
               </div>
@@ -164,7 +167,7 @@
             <article class="card">
               <div class="card-head">
                 <div>
-                  <p class="card-kicker">Backpack</p>
+                  <p class="card-kicker">建筑背包</p>
                   <h3>选择建筑再点格子</h3>
                 </div>
                 <p class="selection-note" id="selected-building-label">当前未选择建筑</p>
@@ -176,7 +179,7 @@
           <article class="card">
             <div class="card-head">
               <div>
-                <p class="card-kicker">Campus Grid</p>
+                <p class="card-kicker">校园地块</p>
                 <h3>校园建设区</h3>
               </div>
             </div>
@@ -187,17 +190,17 @@
         <section class="view" data-panel="growth">
           <div class="three-up">
             <article class="card stat-card">
-              <p class="card-kicker">Level</p>
-              <h2 id="growth-level">Lv.0</h2>
+              <p class="card-kicker">等级</p>
+              <h2 id="growth-level">0 级</h2>
               <p class="muted" id="growth-xp"></p>
             </article>
             <article class="card stat-card">
-              <p class="card-kicker">Momentum</p>
+              <p class="card-kicker">连续记录</p>
               <h2 id="growth-streak">0</h2>
               <p class="muted" id="growth-weekly"></p>
             </article>
             <article class="card stat-card">
-              <p class="card-kicker">Collection</p>
+              <p class="card-kicker">图鉴收藏</p>
               <h2 id="growth-catalog">0</h2>
               <p class="muted" id="growth-inventory"></p>
             </article>
@@ -206,7 +209,7 @@
           <article class="card">
             <div class="card-head">
               <div>
-                <p class="card-kicker">Progress</p>
+                <p class="card-kicker">经验进度</p>
                 <h3>经验条</h3>
               </div>
             </div>
@@ -220,12 +223,23 @@
           <article class="card">
             <div class="card-head">
               <div>
-                <p class="card-kicker">Local State</p>
+                <p class="card-kicker">本地存档</p>
                 <h3>当前存档摘要</h3>
               </div>
             </div>
             <div id="settings-summary" class="settings-grid"></div>
-            <button class="danger-btn" id="reset-data-btn" type="button">Reset Local Data</button>
+            <button class="danger-btn" id="reset-data-btn" type="button">重置本地数据</button>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <p class="card-kicker">建筑图标</p>
+                <h3>自定义建筑图标</h3>
+              </div>
+              <p class="selection-note">上传图片替换默认图标，刷新后仍保留</p>
+            </div>
+            <div id="building-icons-list" class="building-icons-grid"></div>
           </article>
         </section>
       </main>

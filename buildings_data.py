@@ -3,48 +3,48 @@
 BUILDINGS = {
     "teaching_building": {
         "id": "teaching_building",
-        "name": "Teaching Hall",
+        "name": "教学楼",
         "emoji": "🏫",
         "rarity": "common",
         "category": "functional",
         "effects": {"xp_bonus": 0.05},
-        "description": "Core teaching area.",
+        "description": "日常学习与课堂推进的核心区域。",
     },
     "college_building": {
         "id": "college_building",
-        "name": "College Block",
+        "name": "学院楼",
         "emoji": "🏢",
         "rarity": "common",
         "category": "functional",
         "effects": {"weekly_bonus": 0.05},
-        "description": "College and faculty offices.",
+        "description": "学院与教师办公所在的功能楼群。",
     },
     "office_building": {
         "id": "office_building",
-        "name": "Office Center",
+        "name": "行政楼",
         "emoji": "🏬",
         "rarity": "common",
         "category": "functional",
         "effects": {"coin_bonus": 0.05},
-        "description": "Administrative center.",
+        "description": "带来更稳定金币收益的行政中心。",
     },
     "school_gate": {
         "id": "school_gate",
-        "name": "Main Gate",
+        "name": "校门",
         "emoji": "🏛",
         "rarity": "rare",
         "category": "landmark",
         "effects": {"rare_drop_bonus": 0.08},
-        "description": "Campus landmark gate.",
+        "description": "极具辨识度的校园地标入口。",
     },
     "leijun_building": {
         "id": "leijun_building",
-        "name": "Innovation Tower",
+        "name": "创新塔",
         "emoji": "🌟",
         "rarity": "epic",
         "category": "landmark",
         "effects": {"streak_bonus": 0.1, "rare_drop_bonus": 0.12},
-        "description": "High-rarity landmark building.",
+        "description": "高稀有度地标建筑，拥有更强成长加成。",
     },
 }
 
@@ -55,9 +55,9 @@ RARITY_COLORS = {
 }
 
 RARITY_NAMES = {
-    "common": "Common",
-    "rare": "Rare",
-    "epic": "Epic",
+    "common": "普通",
+    "rare": "稀有",
+    "epic": "史诗",
 }
 
 

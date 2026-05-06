@@ -43,6 +43,15 @@ const BUILDING_RARITY_PALETTES = {
   },
 };
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function artToken(seed) {
   return String(seed || "art")
     .toLowerCase()
@@ -53,9 +62,13 @@ function getBuildingPalette(rarity) {
   return BUILDING_RARITY_PALETTES[rarity] || BUILDING_RARITY_PALETTES.common;
 }
 
-function renderBuildingIllustration(building, seed, variant = "card") {
+function renderBuildingIllustration(building, seed, variant = "card", customIcon) {
   if (!building) {
     return "";
+  }
+
+  if (customIcon) {
+    return `<img class="art-img" src="${customIcon}" alt="${escapeHtml(building.name)}" />`;
   }
 
   const palette = getBuildingPalette(building.rarity);
@@ -208,12 +221,12 @@ function renderBuildingShape(buildingId, token, palette) {
   }
 }
 
-function renderCampusTileIllustration(cell, seed) {
+function renderCampusTileIllustration(cell, seed, customIcon) {
   if (!cell.unlocked) {
     return renderLockedMountainIllustration(seed);
   }
   if (cell.building) {
-    return renderBuildingIllustration(cell.building, seed, "tile");
+    return renderBuildingIllustration(cell.building, seed, "tile", customIcon);
   }
   return renderOpenLandIllustration(seed);
 }

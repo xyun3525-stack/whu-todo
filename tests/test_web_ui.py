@@ -24,14 +24,14 @@ class WebAppStateTests(unittest.TestCase):
                 streak_days=3,
                 weekly_progress={"completed": 4, "target": 15, "week_key": "2026-W17"},
             )
-            campus = Campus(name="Luojia Web", prosperity=22)
+            campus = Campus(name="珞珈网页校区", prosperity=22)
             collection = Collection(catalog=["school_gate"], inventory=["school_gate"])
-            tasks = [Task("Today item", scheduled_for_today=True)]
+            tasks = [Task("今日事项", scheduled_for_today=True)]
             app = WebGameApp(storage=storage, game=GameLogic(player, campus, collection, tasks))
 
             state = app.get_state()
 
-        self.assertEqual(state["today"]["summary"]["campus_name"], "Luojia Web")
+        self.assertEqual(state["today"]["summary"]["campus_name"], "珞珈网页校区")
         self.assertEqual(state["growth"]["level"], 2)
         self.assertEqual(state["settings"]["coins"], 9)
         self.assertEqual(state["campus"]["inventory_stacks"][0]["id"], "school_gate")
@@ -52,7 +52,7 @@ class WebAppFlowTests(unittest.TestCase):
                     player,
                     campus,
                     Collection(),
-                    [Task("Level me up", scheduled_for_today=True)],
+                    [Task("升级冲刺", scheduled_for_today=True)],
                 ),
             )
             task_id = app.game.tasks[0].id
@@ -71,8 +71,8 @@ class WebAppFlowTests(unittest.TestCase):
             storage = Storage(f"{tmp_dir}/data.json")
             player = Player(level=1, xp=90)
             tasks = [
-                Task("First", scheduled_for_today=True),
-                Task("Second", scheduled_for_today=True),
+                Task("第一项", scheduled_for_today=True),
+                Task("第二项", scheduled_for_today=True),
             ]
             app = WebGameApp(
                 storage=storage,
@@ -81,7 +81,7 @@ class WebAppFlowTests(unittest.TestCase):
 
             app.complete_task(tasks[0].id)
 
-            with self.assertRaisesRegex(ValueError, "pending level-up reward"):
+            with self.assertRaisesRegex(ValueError, "升级奖励"):
                 app.complete_task(tasks[1].id)
 
 
@@ -106,14 +106,14 @@ class WebServerSmokeTests(unittest.TestCase):
                 base_url = f"http://127.0.0.1:{server.server_address[1]}"
 
                 index_html = urllib.request.urlopen(f"{base_url}/").read().decode("utf-8")
-                self.assertIn("Gamified Todo Campus", index_html)
+                self.assertIn("校园成长待办", index_html)
 
                 state = json.loads(urllib.request.urlopen(f"{base_url}/api/state").read())
                 self.assertIn("today", state)
 
                 request = urllib.request.Request(
                     f"{base_url}/api/tasks",
-                    data=json.dumps({"title": "Browser task", "scheduled_for_today": True}).encode("utf-8"),
+                    data=json.dumps({"title": "浏览器任务", "scheduled_for_today": True}).encode("utf-8"),
                     headers={"Content-Type": "application/json"},
                     method="POST",
                 )
@@ -131,7 +131,7 @@ class WebServerSmokeTests(unittest.TestCase):
                 thread.join(timeout=5)
                 server.server_close()
 
-        self.assertEqual(created["task"]["title"], "Browser task")
+        self.assertEqual(created["task"]["title"], "浏览器任务")
         self.assertIn("reward", completed)
 
 

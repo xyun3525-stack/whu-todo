@@ -214,7 +214,7 @@ class Player:
 class Campus:
     def __init__(
         self,
-        name="Luojia Hill",
+        name="珞珈山",
         grid_size=2,
         available_cells=None,
         grid=None,
@@ -296,7 +296,7 @@ class Campus:
     @classmethod
     def from_dict(cls, data):
         return cls(
-            name=data.get("name", "Luojia Hill"),
+            name=data.get("name", "珞珈山"),
             grid_size=data.get("grid_size", 2),
             available_cells=set(data.get("available_cells", ["0,0", "1,0", "0,1", "1,1"])),
             grid=data.get("grid", {}),

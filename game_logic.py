@@ -23,11 +23,12 @@ class RewardResult:
 class GameLogic:
     RARITY_DROP_RATES = {"common": 0.68, "rare": 0.24, "epic": 0.08}
 
-    def __init__(self, player, campus, collection, tasks):
+    def __init__(self, player, campus, collection, tasks, settings=None):
         self.player = player
         self.campus = campus
         self.collection = collection
         self.tasks = tasks
+        self.settings = settings if settings is not None else {}
 
     def _find_task(self, task_id):
         for task in self.tasks:
@@ -243,7 +244,7 @@ class GameLogic:
             "campus": self.campus.to_dict(),
             "collection": self.collection.to_dict(),
             "tasks": [task.to_dict() for task in self.tasks],
-            "settings": {"theme_name": "campus"},
+            "settings": {"theme_name": "campus", "custom_icons": {}} | self.settings,
         }
 
     def complete_task(self, task_id):

@@ -110,6 +110,24 @@ class StorageRoundtripTests(unittest.TestCase):
             self.assertEqual(restored["tasks"][1]["estimated_minutes"], 25)
             self.assertEqual(restored["tasks"][1]["repeat_rule"], "none")
 
+    def test_load_state_translates_legacy_default_campus_name(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            data_path = os.path.join(tmp_dir, "data.json")
+            storage = Storage(data_path)
+            storage.save_state(
+                {
+                    "player": {"level": 1, "xp": 0},
+                    "campus": {"name": "Luojia Hill"},
+                    "collection": {"inventory": [], "catalog": []},
+                    "tasks": [],
+                    "settings": {"theme_name": "campus"},
+                }
+            )
+
+            restored = storage.load_state()
+
+        self.assertEqual(restored["campus"]["name"], "珞珈山")
+
 
 class StorageSafetyTests(unittest.TestCase):
     def test_load_state_preserves_future_version_without_rewrite(self):

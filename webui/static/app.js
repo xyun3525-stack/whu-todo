@@ -5,10 +5,48 @@ const uiState = {
   editingTaskId: null,
   selectedBuildingId: null,
   pendingReward: null,
+  heroQuoteIndex: 0,
+  heroQuoteTimer: null,
 };
+
+const BUILDINGS = [
+  { id: "teaching_building", name: "教学楼", emoji: "🏫", rarity: "common", category: "functional", effects: { xp_bonus: 0.05 }, description: "日常学习与课堂推进的核心区域。" },
+  { id: "college_building", name: "学院楼", emoji: "🏢", rarity: "common", category: "functional", effects: { weekly_bonus: 0.05 }, description: "学院与教师办公所在的功能楼群。" },
+  { id: "office_building", name: "行政楼", emoji: "🏬", rarity: "common", category: "functional", effects: { coin_bonus: 0.05 }, description: "带来更稳定金币收益的行政中心。" },
+  { id: "school_gate", name: "校门", emoji: "🏛", rarity: "rare", category: "landmark", effects: { rare_drop_bonus: 0.08 }, description: "极具辨识度的校园地标入口。" },
+  { id: "leijun_building", name: "创新塔", emoji: "🌟", rarity: "epic", category: "landmark", effects: { streak_bonus: 0.1, rare_drop_bonus: 0.12 }, description: "高稀有度地标建筑，拥有更强成长加成。" },
+];
+
+const HERO_QUOTES = [
+  {
+    line: "山路并不催人赶路，它只是安静地等你一步一步走完。",
+    note: "许多进步都不轰烈，今天肯做一点，明天就会亮一点。",
+  },
+  {
+    line: "把日子过成格子间里的微光，也能慢慢照见远处的山。",
+    note: "人不必时时沸腾，稳定地向前，本身就是一种力量。",
+  },
+  {
+    line: "风来时先整理衣襟，雨落时先照看脚下。",
+    note: "生活教我们的，常常不是飞得多高，而是怎样稳稳落地。",
+  },
+  {
+    line: "有些答案不在远方，就藏在认真做完今天这件小事里。",
+    note: "当你愿意把当下过细，未来就不会总是空白。",
+  },
+  {
+    line: "树影会移动，花会晚开，很多事都在自己的时辰里成熟。",
+    note: "别急着和别人比较节奏，先把自己的步子走稳。",
+  },
+  {
+    line: "愿你在琐碎里保有耐心，在重复里仍看见生活的新意。",
+    note: "真正让人变强的，往往不是冲刺，而是长期温柔而坚定的坚持。",
+  },
+];
 
 document.addEventListener("DOMContentLoaded", () => {
   bindEvents();
+  initHeroQuoteRotation();
   refreshState();
 });
 
@@ -36,7 +74,7 @@ function bindEvents() {
       scheduled_for_today: true,
     });
     document.getElementById("quick-task-title").value = "";
-    showToast("已加入 Today。");
+    showToast("已加入今日。");
   });
 
   document.getElementById("task-form").addEventListener("submit", submitTaskForm);
@@ -160,10 +198,10 @@ function switchView(view, rerender = true) {
 
 function renderHero() {
   const stats = [
-    { label: "Campus", value: uiState.data.settings.campus_name },
-    { label: "Level", value: `Lv.${uiState.data.growth.level}` },
-    { label: "Streak", value: `${uiState.data.growth.streak_days} day(s)` },
-    { label: "Prosperity", value: uiState.data.today.summary.campus_progress },
+    { label: "校园", value: uiState.data.settings.campus_name },
+    { label: "等级", value: `${uiState.data.growth.level} 级` },
+    { label: "连续", value: `${uiState.data.growth.streak_days} 天` },
+    { label: "繁荣度", value: uiState.data.today.summary.campus_progress },
   ];
 
   document.getElementById("hero-stats").innerHTML = stats
@@ -178,17 +216,58 @@ function renderHero() {
     .join("");
 }
 
+function initHeroQuoteRotation() {
+  renderHeroQuote(uiState.heroQuoteIndex);
+  if (uiState.heroQuoteTimer) {
+    window.clearInterval(uiState.heroQuoteTimer);
+  }
+  uiState.heroQuoteTimer = window.setInterval(() => {
+    const nextIndex = (uiState.heroQuoteIndex + 1) % HERO_QUOTES.length;
+    transitionHeroQuote(nextIndex);
+  }, 5200);
+}
+
+function transitionHeroQuote(nextIndex) {
+  const card = document.getElementById("hero-quote");
+  if (!card) {
+    return;
+  }
+  card.classList.add("is-swapping");
+  window.setTimeout(() => {
+    renderHeroQuote(nextIndex);
+    card.classList.remove("is-swapping");
+  }, 220);
+}
+
+function renderHeroQuote(index) {
+  const quote = HERO_QUOTES[index];
+  const line = document.getElementById("hero-quote-line");
+  const note = document.getElementById("hero-quote-note");
+  const dots = document.getElementById("hero-quote-dots");
+  if (!quote || !line || !note || !dots) {
+    return;
+  }
+
+  uiState.heroQuoteIndex = index;
+  line.textContent = quote.line;
+  note.textContent = quote.note;
+  dots.innerHTML = HERO_QUOTES.map(
+    (_, itemIndex) =>
+      `<span class="hero-quote-dot ${itemIndex === index ? "active" : ""}"></span>`
+  ).join("");
+}
+
 function renderToday() {
   const summary = uiState.data.today.summary;
   document.getElementById("today-summary-title").textContent = `${summary.campus_name} 的今日推进`;
   document.getElementById(
     "today-summary-meta"
-  ).textContent = `Today ${summary.today_count} 项，已完成 ${summary.completed_today} 项。`;
+  ).textContent = `今日共 ${summary.today_count} 项，已完成 ${summary.completed_today} 项。`;
 
   document.getElementById("today-pills").innerHTML = [
-    `Streak ${summary.streak_days}`,
-    `Weekly ${summary.weekly_completed}/${summary.weekly_target}`,
-    `Prosperity ${summary.campus_progress}`,
+    `连续 ${summary.streak_days} 天`,
+    `本周 ${summary.weekly_completed}/${summary.weekly_target}`,
+    `繁荣度 ${summary.campus_progress}`,
   ]
     .map((text) => `<span class="pill">${escapeHtml(text)}</span>`)
     .join("");
@@ -216,10 +295,10 @@ function renderCampus() {
   document.getElementById("campus-name-heading").textContent = campus.name;
   document.getElementById("campus-name-input").value = campus.name;
   document.getElementById("campus-stats").innerHTML = [
-    `Prosperity: ${campus.prosperity}`,
-    `Cells: ${campus.unlocked_cells}/${campus.total_cells}`,
-    `Grid: ${campus.grid_size} x ${campus.grid_size}`,
-    `Regions: ${campus.regions.join(" / ")}`,
+    `繁荣度：${campus.prosperity}`,
+    `地块：${campus.unlocked_cells}/${campus.total_cells}`,
+    `网格：${campus.grid_size} x ${campus.grid_size}`,
+    `区域：${campus.regions.map(formatRegion).join(" / ")}`,
   ]
     .map((item) => `<div class="pill">${escapeHtml(item)}</div>`)
     .join("");
@@ -231,6 +310,7 @@ function renderCampus() {
     ? `当前选择：${selectedBuilding.name}，点击空地即可放置`
     : "当前未选择建筑";
 
+  const customIcons = uiState.data.settings.custom_icons || {};
   const inventoryList = document.getElementById("inventory-list");
   if (!campus.inventory_stacks.length) {
     inventoryList.innerHTML = `<div class="empty-state">背包里还没有建筑掉落。</div>`;
@@ -244,16 +324,16 @@ function renderCampus() {
             data-building-id="${escapeHtml(building.id)}"
           >
             <div class="inventory-art">
-              ${renderBuildingIllustration(building, `inventory-${building.id}`, "card")}
+              ${renderBuildingIllustration(building, `inventory-${building.id}`, "card", customIcons[building.id])}
             </div>
             <div class="inventory-meta">
               <div class="inventory-title-row">
                 <strong>${escapeHtml(building.name)}</strong>
                 <span class="rarity-chip rarity-${escapeHtml(building.rarity)}">${escapeHtml(formatRarity(building.rarity))}</span>
               </div>
-              <small class="inventory-description">${escapeHtml(building.description || "Campus building")}</small>
+              <small class="inventory-description">${escapeHtml(building.description || "校园建筑")}</small>
               <div class="meta-line">
-                <span class="meta-chip">x ${building.count}</span>
+                <span class="meta-chip">数量 ${building.count}</span>
                 <span class="meta-chip">${escapeHtml(formatEffects(building.effects))}</span>
               </div>
             </div>
@@ -288,16 +368,16 @@ function renderCampus() {
         ? `${cell.building.name}`
         : cell.unlocked
           ? uiState.selectedBuildingId
-            ? "Place Here"
-            : "Open Land"
-          : "Mountain";
+            ? "点击放置"
+            : "可建空地"
+          : "山体";
       const status = cell.building
         ? formatRarity(cell.building.rarity)
         : cell.unlocked
           ? uiState.selectedBuildingId
-            ? "Ready"
-            : "Buildable"
-          : "Locked";
+            ? "可放置"
+            : "可建设"
+          : "未解锁";
 
       return `
         <button
@@ -309,7 +389,7 @@ function renderCampus() {
           data-occupied="${Boolean(cell.building)}"
         >
           <div class="cell-art-wrap">
-            ${renderCampusTileIllustration(cell, `cell-${cell.key}`)}
+            ${renderCampusTileIllustration(cell, `cell-${cell.key}`, cell.building ? customIcons[cell.building.id] : undefined)}
           </div>
           <div class="cell-label-wrap">
             <span class="cell-status">${escapeHtml(status)}</span>
@@ -352,28 +432,28 @@ function renderCampus() {
 
 function renderGrowth() {
   const growth = uiState.data.growth;
-  document.getElementById("growth-level").textContent = `Lv.${growth.level}`;
-  document.getElementById("growth-xp").textContent = `XP ${growth.xp}`;
-  document.getElementById("growth-streak").textContent = `${growth.streak_days}`;
+  document.getElementById("growth-level").textContent = `${growth.level} 级`;
+  document.getElementById("growth-xp").textContent = `经验 ${growth.xp}`;
+  document.getElementById("growth-streak").textContent = `${growth.streak_days} 天`;
   document.getElementById(
     "growth-weekly"
-  ).textContent = `Weekly ${growth.weekly_completed}/${growth.weekly_target}`;
+  ).textContent = `本周 ${growth.weekly_completed}/${growth.weekly_target}`;
   document.getElementById("growth-catalog").textContent = `${growth.catalog_count}`;
   document.getElementById(
     "growth-inventory"
-  ).textContent = `Inventory ${growth.inventory_count}`;
+  ).textContent = `背包 ${growth.inventory_count}`;
   document.getElementById("growth-progress-fill").style.width = `${growth.xp_ratio * 100}%`;
 }
 
 function renderSettings() {
   const settings = uiState.data.settings;
   document.getElementById("settings-summary").innerHTML = [
-    ["Campus", settings.campus_name],
-    ["Level", `Lv.${settings.level}`],
-    ["XP", settings.xp],
-    ["Coins", settings.coins],
-    ["Inventory", settings.inventory_count],
-    ["Catalog", settings.catalog_count],
+    ["校园", settings.campus_name],
+    ["等级", `${settings.level} 级`],
+    ["经验", settings.xp],
+    ["金币", settings.coins],
+    ["背包", settings.inventory_count],
+    ["图鉴", settings.catalog_count],
   ]
     .map(
       ([label, value]) => `
@@ -384,30 +464,118 @@ function renderSettings() {
       `
     )
     .join("");
+
+  renderBuildingIconsManager();
+}
+
+function renderBuildingIconsManager() {
+  const container = document.getElementById("building-icons-list");
+  const customIcons = uiState.data.settings.custom_icons || {};
+
+  container.innerHTML = BUILDINGS.map((building) => {
+    const customIcon = customIcons[building.id];
+    const previewContent = customIcon
+      ? `<img src="${escapeHtml(customIcon)}" class="icon-preview-img" alt="${escapeHtml(building.name)}" />`
+      : `<span class="icon-preview-emoji">${escapeHtml(building.emoji)}</span>`;
+    const deleteButton = customIcon
+      ? `<button class="icon-delete-btn" type="button" data-delete-icon="${escapeHtml(building.id)}">删除</button>`
+      : "";
+
+    return `
+      <div class="icon-manager-row">
+        <div class="icon-manager-preview">
+          ${previewContent}
+        </div>
+        <div class="icon-manager-info">
+          <strong>${escapeHtml(building.name)}</strong>
+          <span class="rarity-chip rarity-${escapeHtml(building.rarity)}">${escapeHtml(formatRarity(building.rarity))}</span>
+        </div>
+        <div class="icon-manager-actions">
+          <label class="icon-upload-btn">
+            <input type="file" accept="image/*" class="hidden" data-upload-icon="${escapeHtml(building.id)}" />
+            ${customIcon ? "替换" : "上传"}
+          </label>
+          ${deleteButton}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // Bind upload handlers
+  container.querySelectorAll("[data-upload-icon]").forEach((input) => {
+    input.addEventListener("change", handleIconUpload);
+  });
+
+  // Bind delete handlers
+  container.querySelectorAll("[data-delete-icon]").forEach((button) => {
+    button.addEventListener("click", handleIconDelete);
+  });
+}
+
+async function handleIconUpload(event) {
+  const buildingId = event.target.dataset.uploadIcon;
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (file.size > 2 * 1024 * 1024) {
+    showToast("图片大小不能超过 2MB。");
+    event.target.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const dataUrl = e.target.result;
+    try {
+      await mutate("/api/settings", "PATCH", {
+        custom_icons: { [buildingId]: dataUrl },
+      });
+      showToast("图标已上传。");
+    } catch (err) {
+      showToast(err.message || "上传失败。");
+    }
+    event.target.value = "";
+  };
+  reader.readAsDataURL(file);
+}
+
+async function handleIconDelete(event) {
+  const buildingId = event.target.dataset.deleteIcon;
+  const confirmed = window.confirm("确认删除此自定义图标吗？");
+  if (!confirmed) return;
+
+  try {
+    await mutate("/api/settings", "PATCH", {
+      custom_icons: { [buildingId]: null },
+    });
+    showToast("图标已删除。");
+  } catch (err) {
+    showToast(err.message || "删除失败。");
+  }
 }
 
 function formatRarity(rarity) {
   const labels = {
-    common: "Common",
-    rare: "Rare",
-    epic: "Epic",
+    common: "普通",
+    rare: "稀有",
+    epic: "史诗",
   };
   return labels[rarity] || rarity;
 }
 
 function formatEffects(effects) {
   const labels = {
-    xp_bonus: "XP boost",
-    coin_bonus: "Coin boost",
-    rare_drop_bonus: "Rare drop",
-    weekly_bonus: "Weekly boost",
-    streak_bonus: "Streak boost",
+    xp_bonus: "经验加成",
+    coin_bonus: "金币加成",
+    rare_drop_bonus: "稀有掉落",
+    weekly_bonus: "周目标加成",
+    streak_bonus: "连续加成",
   };
   const parts = Object.entries(effects || {}).map(([key, value]) => {
     const amount = typeof value === "number" ? `${Math.round(value * 100)}%` : String(value);
     return `${labels[key] || key} ${amount}`;
   });
-  return parts.join(" · ") || "No bonus";
+  return parts.join(" · ") || "无加成";
 }
 
 function renderTaskCollection(containerId, tasks, options) {
@@ -420,12 +588,12 @@ function renderTaskCollection(containerId, tasks, options) {
   container.innerHTML = tasks
     .map((task) => {
       const chips = [
-        task.priority,
-        `${task.estimated_minutes}m`,
-        task.deadline ? `due ${task.deadline}` : "no deadline",
-        task.repeat_rule !== "none" ? task.repeat_rule : null,
-        task.scheduled_for_today ? "today" : null,
-        task.is_overdue ? "overdue" : null,
+        formatPriority(task.priority),
+        `${task.estimated_minutes} 分钟`,
+        task.deadline ? `截止 ${task.deadline}` : "无截止日",
+        task.repeat_rule !== "none" ? formatRepeatRule(task.repeat_rule) : null,
+        task.scheduled_for_today ? "今日" : null,
+        task.is_overdue ? "已逾期" : null,
       ]
         .filter(Boolean)
         .map((item) => `<span class="meta-chip">${escapeHtml(item)}</span>`)
@@ -433,13 +601,13 @@ function renderTaskCollection(containerId, tasks, options) {
 
       const actionButtons = task.completed
         ? `<button class="text-btn" type="button" disabled>已完成</button>`
-        : `<button class="text-btn" type="button" data-complete-task="${task.id}">Complete</button>`;
+        : `<button class="text-btn" type="button" data-complete-task="${task.id}">完成</button>`;
 
       const editButton = options.allowEdit
-        ? `<button class="text-btn" type="button" data-edit-task="${task.id}">Edit</button>`
+        ? `<button class="text-btn" type="button" data-edit-task="${task.id}">编辑</button>`
         : "";
       const deleteButton = options.allowEdit
-        ? `<button class="text-btn danger" type="button" data-delete-task="${task.id}">Delete</button>`
+        ? `<button class="text-btn danger" type="button" data-delete-task="${task.id}">删除</button>`
         : "";
 
       return `
@@ -546,8 +714,8 @@ function openUpgradeModal(reward) {
   const modal = document.getElementById("upgrade-modal");
   const layer = document.getElementById("modal-layer");
   modal.innerHTML = `
-    <p class="card-kicker">Level Up</p>
-    <h2>Lv.${escapeHtml(String(reward.new_level))}</h2>
+    <p class="card-kicker">升级奖励</p>
+    <h2>${escapeHtml(String(reward.new_level))} 级</h2>
     <p class="muted">选择一个升级奖励，然后再查看本次任务结算。</p>
     <div class="modal-option-list">
       ${reward.upgrade_options
@@ -585,21 +753,21 @@ function openUpgradeModal(reward) {
 
 function openRewardModal(reward) {
   const lines = [
-    `XP +${reward.xp}`,
-    `Coins +${reward.coins}`,
-    `Campus Points +${reward.campus_points}`,
-    `Streak ${reward.streak_days} day(s)`,
+    `经验 +${reward.xp}`,
+    `金币 +${reward.coins}`,
+    `校园点数 +${reward.campus_points}`,
+    `连续 ${reward.streak_days} 天`,
   ];
   if (reward.dropped_building) {
-    lines.push(`Drop: ${reward.dropped_building.emoji} ${reward.dropped_building.name}`);
+    lines.push(`掉落：${reward.dropped_building.name}`);
   }
   if (reward.repeated_task) {
-    lines.push(`Next Repeat Task: ${reward.repeated_task.title}`);
+    lines.push(`下一条重复任务：${reward.repeated_task.title}`);
   }
 
   const modal = document.getElementById("reward-modal");
   modal.innerHTML = `
-    <p class="card-kicker">Completion Rewards</p>
+    <p class="card-kicker">完成奖励</p>
     <h2>任务完成</h2>
     <div class="modal-option-list">
       ${lines.map((line) => `<div class="pill">${escapeHtml(line)}</div>`).join("")}
@@ -638,7 +806,32 @@ function formatDateTime(value) {
   if (Number.isNaN(date.getTime())) {
     return "";
   }
-  return `completed ${date.toLocaleString()}`;
+  return `完成于 ${date.toLocaleString()}`;
+}
+
+function formatPriority(priority) {
+  const labels = {
+    normal: "普通",
+    important: "重要",
+    urgent: "紧急",
+  };
+  return labels[priority] || priority;
+}
+
+function formatRepeatRule(rule) {
+  const labels = {
+    daily: "每天",
+    weekly: "每周",
+  };
+  return labels[rule] || rule;
+}
+
+function formatRegion(region) {
+  const labels = {
+    core: "核心区",
+    library: "图书馆区",
+  };
+  return labels[region] || region;
 }
 
 function escapeHtml(value) {

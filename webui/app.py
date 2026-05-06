@@ -42,11 +42,13 @@ class WebGameApp:
         self.game = game or self._load_game(self.storage.load_state())
 
     def _load_game(self, state):
+        settings = state.get("settings", {})
         return GameLogic(
             Player.from_dict(state["player"]),
             Campus.from_dict(state["campus"]),
             Collection.from_dict(state["collection"]),
             [Task.from_dict(item) for item in state["tasks"]],
+            settings=settings,
         )
 
     def _save_locked(self):
@@ -134,6 +136,7 @@ class WebGameApp:
             "coins": self.game.player.coins,
             "inventory_count": len(self.game.collection.inventory),
             "catalog_count": len(self.game.collection.catalog),
+            "custom_icons": dict(self.game.settings.get("custom_icons") or {}),
         }
 
     def _serialize_reward(self, result):
@@ -167,20 +170,20 @@ class WebGameApp:
     def _parse_task_payload(self, payload):
         title = str(payload.get("title", "")).strip()
         if not title:
-            raise ApiError("Task title cannot be empty.")
+            raise ApiError("任务标题不能为空。")
 
         priority = payload.get("priority", "normal")
         if priority not in self.VALID_PRIORITIES:
-            raise ApiError("Invalid priority.")
+            raise ApiError("任务优先级无效。")
 
         repeat_rule = payload.get("repeat_rule", "none")
         if repeat_rule not in self.VALID_REPEAT_RULES:
-            raise ApiError("Invalid repeat rule.")
+            raise ApiError("重复规则无效。")
 
         deadline = self._normalize_deadline(payload.get("deadline"))
         estimated_minutes = self._coerce_positive_int(
             payload.get("estimated_minutes", 25),
-            "Estimated minutes",
+            "预计分钟数",
         )
 
         return {
@@ -201,25 +204,25 @@ class WebGameApp:
         try:
             datetime.strptime(value, "%Y-%m-%d")
         except ValueError as exc:
-            raise ApiError("Deadline must be in YYYY-MM-DD format.") from exc
+            raise ApiError("截止日期必须使用 YYYY-MM-DD 格式。") from exc
         return value
 
     def _coerce_positive_int(self, value, label):
         try:
             number = int(value)
         except (TypeError, ValueError) as exc:
-            raise ApiError(f"{label} must be a number.") from exc
+            raise ApiError(f"{label}必须是数字。") from exc
         if number <= 0:
-            raise ApiError(f"{label} must be greater than 0.")
+            raise ApiError(f"{label}必须大于 0。")
         return number
 
     def _coerce_non_negative_int(self, value, label):
         try:
             number = int(value)
         except (TypeError, ValueError) as exc:
-            raise ApiError(f"{label} must be a number.") from exc
+            raise ApiError(f"{label}必须是数字。") from exc
         if number < 0:
-            raise ApiError(f"{label} must be 0 or greater.")
+            raise ApiError(f"{label}必须大于或等于 0。")
         return number
 
     def add_task(self, payload):
@@ -232,24 +235,24 @@ class WebGameApp:
         with self._lock:
             task = self.game.update_task(task_id, **self._parse_task_payload(payload))
             if not task:
-                raise ApiError("Task not found.", status=HTTPStatus.NOT_FOUND)
+                raise ApiError("未找到任务。", status=HTTPStatus.NOT_FOUND)
             self._save_locked()
             return {"task": self._serialize_task(task), "state": self._snapshot_locked()}
 
     def delete_task(self, task_id):
         with self._lock:
             if not self.game.delete_task(task_id):
-                raise ApiError("Task not found.", status=HTTPStatus.NOT_FOUND)
+                raise ApiError("未找到任务。", status=HTTPStatus.NOT_FOUND)
             self._save_locked()
             return {"state": self._snapshot_locked()}
 
     def complete_task(self, task_id):
         with self._lock:
             if self._pending_upgrade:
-                raise ApiError("Please choose the pending level-up reward first.")
+                raise ApiError("请先选择当前待领取的升级奖励。")
             result = self.game.complete_task(task_id)
             if not result:
-                raise ApiError("Task could not be completed.", status=HTTPStatus.NOT_FOUND)
+                raise ApiError("任务无法完成。", status=HTTPStatus.NOT_FOUND)
             if result.leveled_up:
                 self._pending_upgrade = [option["type"] for option in result.upgrade_options]
             self._save_locked()
@@ -262,7 +265,7 @@ class WebGameApp:
         with self._lock:
             valid_choices = set(self._pending_upgrade or [])
             if choice_type not in valid_choices:
-                raise ApiError("Invalid upgrade choice.")
+                raise ApiError("升级选项无效。")
             self.game.apply_upgrade_choice(choice_type)
             self._pending_upgrade = None
             self._save_locked()
@@ -272,7 +275,7 @@ class WebGameApp:
         with self._lock:
             value = str(name or "").strip()
             if not value:
-                raise ApiError("Campus name cannot be empty.")
+                raise ApiError("校园名称不能为空。")
             self.game.rename_campus(value)
             self._save_locked()
             return {"state": self._snapshot_locked()}
@@ -281,12 +284,12 @@ class WebGameApp:
         with self._lock:
             building_id = str(payload.get("building_id", "")).strip()
             if not building_id:
-                raise ApiError("Please choose a building first.")
+                raise ApiError("请先选择一个建筑。")
 
-            x = self._coerce_non_negative_int(payload.get("x"), "X position")
-            y = self._coerce_non_negative_int(payload.get("y"), "Y position")
+            x = self._coerce_non_negative_int(payload.get("x"), "横坐标")
+            y = self._coerce_non_negative_int(payload.get("y"), "纵坐标")
             if not self.game.place_building(building_id, x, y):
-                raise ApiError("This cell is locked or already occupied.")
+                raise ApiError("该地块未解锁或已被占用。")
             self._save_locked()
             return {"state": self._snapshot_locked()}
 
@@ -295,6 +298,22 @@ class WebGameApp:
             self.game.reset_state()
             self._pending_upgrade = None
             self.storage.reset()
+            self._save_locked()
+            return {"state": self._snapshot_locked()}
+
+    def update_settings(self, payload):
+        with self._lock:
+            if "custom_icons" in payload:
+                icons_update = payload["custom_icons"]
+                current = dict(self.game.settings.get("custom_icons") or {})
+                if icons_update is None:
+                    current = {}
+                else:
+                    current.update(icons_update)
+                    for key in list(current.keys()):
+                        if current[key] is None:
+                            del current[key]
+                self.game.settings["custom_icons"] = current
             self._save_locked()
             return {"state": self._snapshot_locked()}
 
@@ -322,9 +341,9 @@ def make_handler(app):
             parsed = urlparse(self.path)
             self._handle_api("PUT", parsed.path)
 
-        def do_DELETE(self):
+        def do_PATCH(self):
             parsed = urlparse(self.path)
-            self._handle_api("DELETE", parsed.path)
+            self._handle_api("PATCH", parsed.path)
 
         def log_message(self, *_args):
             return
@@ -335,11 +354,11 @@ def make_handler(app):
             try:
                 candidate.relative_to(STATIC_DIR)
             except ValueError:
-                self._send_json(HTTPStatus.FORBIDDEN, {"error": "Forbidden"})
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": "禁止访问。"})
                 return
 
             if not candidate.exists() or not candidate.is_file():
-                self._send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
+                self._send_json(HTTPStatus.NOT_FOUND, {"error": "未找到资源。"})
                 return
 
             content_type = mimetypes.guess_type(candidate.name)[0] or "application/octet-stream"
@@ -352,15 +371,15 @@ def make_handler(app):
 
         def _handle_api(self, method, path):
             try:
-                payload = self._read_json() if method in {"POST", "PUT"} else {}
+                payload = self._read_json() if method in {"POST", "PUT", "PATCH"} else {}
                 response = self._dispatch_api(method, path, payload)
                 self._send_json(HTTPStatus.OK, response)
             except ApiError as exc:
                 self._send_json(exc.status, {"error": str(exc)})
             except json.JSONDecodeError:
-                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "Invalid JSON body."})
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "JSON 请求体格式无效。"})
             except Exception:
-                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "Internal server error."})
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "服务器内部错误。"})
 
         def _dispatch_api(self, method, path, payload):
             segments = [segment for segment in path.split("/") if segment]
@@ -394,7 +413,10 @@ def make_handler(app):
             if segments == ["api", "reset"] and method == "POST":
                 return app.reset()
 
-            raise ApiError("Route not found.", status=HTTPStatus.NOT_FOUND)
+            if segments == ["api", "settings"] and method == "PATCH":
+                return app.update_settings(payload)
+
+            raise ApiError("接口不存在。", status=HTTPStatus.NOT_FOUND)
 
         def _read_json(self):
             length = int(self.headers.get("Content-Length", "0"))
@@ -429,7 +451,7 @@ def run(host="127.0.0.1", port=8000, open_browser=True):
 
     actual_port = server.server_address[1]
     url = f"http://127.0.0.1:{actual_port}/"
-    print(f"Campus web UI available at {url}")
+    print(f"校园网页界面已启动：{url}")
 
     if open_browser:
         try:
