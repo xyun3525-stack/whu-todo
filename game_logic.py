@@ -2,8 +2,15 @@ import random
 from dataclasses import dataclass
 from datetime import datetime
 
-from buildings_data import BUILDINGS, get_building_by_id
+from buildings_data import BUILDINGS, get_building_by_id as _static_get_building_by_id
 from models import Campus, Collection, Player, Task
+
+
+def get_building_def(building_id, custom_buildings=None):
+    """Merge lookup: custom_buildings takes priority, fallback to static BUILDINGS."""
+    if custom_buildings and building_id in custom_buildings:
+        return custom_buildings[building_id]
+    return _static_get_building_by_id(building_id)
 
 
 @dataclass
@@ -37,14 +44,15 @@ class GameLogic:
         return None
 
     def _get_building_effect_bonus(self, effect_name):
+        custom_buildings = self.settings.get("custom_buildings") if self.settings else None
         total = 0.0
         for building_id in self.collection.inventory:
-            building = get_building_by_id(building_id)
+            building = get_building_def(building_id, custom_buildings)
             if building:
                 total += building.get("effects", {}).get(effect_name, 0.0)
         for building_id in self.campus.grid.values():
             if building_id:
-                building = get_building_by_id(building_id)
+                building = get_building_def(building_id, custom_buildings)
                 if building:
                     total += building.get("effects", {}).get(effect_name, 0.0)
         return total
@@ -73,7 +81,11 @@ class GameLogic:
         }
 
     def _get_random_building_by_rarity(self, rarity):
-        candidates = [building for building in BUILDINGS.values() if building["rarity"] == rarity]
+        custom_buildings = self.settings.get("custom_buildings") if self.settings else None
+        all_buildings = list(BUILDINGS.values())
+        if custom_buildings:
+            all_buildings = all_buildings + list(custom_buildings.values())
+        candidates = [building for building in all_buildings if building["rarity"] == rarity]
         if not candidates:
             return None
         return random.choice(candidates)
@@ -206,7 +218,8 @@ class GameLogic:
     def place_building(self, building_id, x, y):
         if building_id not in self.collection.inventory:
             return False
-        if get_building_by_id(building_id) is None:
+        custom_buildings = self.settings.get("custom_buildings") if self.settings else None
+        if get_building_def(building_id, custom_buildings) is None:
             return False
         if self.campus.place_building(x, y, building_id):
             self.collection.inventory.remove(building_id)
@@ -236,7 +249,8 @@ class GameLogic:
             self.campus.add_empty_slots(2)
 
     def get_building_info(self, building_id):
-        return get_building_by_id(building_id)
+        custom_buildings = self.settings.get("custom_buildings") if self.settings else None
+        return get_building_def(building_id, custom_buildings)
 
     def to_state(self):
         return {

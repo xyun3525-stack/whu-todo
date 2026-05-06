@@ -761,6 +761,90 @@ select:focus {
   background: rgba(182, 73, 57, 0.18);
 }
 
+.building-types-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.building-type-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(32, 48, 42, 0.08);
+}
+
+.building-type-preview {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: rgba(53, 104, 89, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.6rem;
+}
+
+.building-type-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.building-type-info strong {
+  font-size: 0.98rem;
+}
+
+.building-type-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.text-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.card-head-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.effects-list {
+  display: grid;
+  gap: 10px;
+}
+
+.effect-row {
+  display: grid;
+  grid-template-columns: 1fr 100px 36px;
+  gap: 10px;
+  align-items: center;
+}
+
+.effects-add-btn {
+  margin-top: 4px;
+}
+
+.building-form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.form-error {
+  color: var(--danger);
+  font-size: 0.88rem;
+  margin-top: 4px;
+}
+
 .empty-state {
   padding: 22px;
   border-radius: var(--radius-lg);

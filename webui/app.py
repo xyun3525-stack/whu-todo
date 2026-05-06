@@ -13,8 +13,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
-from buildings_data import get_building_by_id
-from game_logic import GameLogic
+from buildings_data import get_building_by_id as _static_get_building_by_id, BUILDINGS as _STATIC_BUILDINGS
+from game_logic import GameLogic, get_building_def
 from models import Campus, Collection, Player, Task
 from storage import Storage
 
@@ -57,7 +57,8 @@ class WebGameApp:
     def _serialize_building(self, building):
         payload = building
         if isinstance(building, str):
-            payload = get_building_by_id(building)
+            custom_buildings = self.game.settings.get("custom_buildings") if self.game.settings else None
+            payload = get_building_def(building, custom_buildings)
         if not payload:
             return None
         return {
@@ -314,8 +315,133 @@ class WebGameApp:
                         if current[key] is None:
                             del current[key]
                 self.game.settings["custom_icons"] = current
+            if "custom_buildings" in payload:
+                # Full replace of custom_buildings
+                self.game.settings["custom_buildings"] = dict(payload["custom_buildings"])
             self._save_locked()
             return {"state": self._snapshot_locked()}
+
+    VALID_RARITIES = {"common", "rare", "epic"}
+
+    def list_buildings(self):
+        with self._lock:
+            custom_buildings = self.game.settings.get("custom_buildings") or {}
+            all_buildings = []
+            for building_id in _STATIC_BUILDINGS:
+                building = get_building_def(building_id, custom_buildings)
+                if building:
+                    all_buildings.append({
+                        "id": building["id"],
+                        "name": building["name"],
+                        "emoji": building["emoji"],
+                        "rarity": building["rarity"],
+                        "category": building["category"],
+                        "effects": dict(building.get("effects", {})),
+                        "description": building.get("description", ""),
+                    })
+            for building_id, building in custom_buildings.items():
+                if building_id not in _STATIC_BUILDINGS:
+                    all_buildings.append({
+                        "id": building["id"],
+                        "name": building["name"],
+                        "emoji": building["emoji"],
+                        "rarity": building["rarity"],
+                        "category": building.get("category", "functional"),
+                        "effects": dict(building.get("effects", {})),
+                        "description": building.get("description", ""),
+                    })
+            return {"buildings": all_buildings, "state": self._snapshot_locked()}
+
+    def _validate_building_payload(self, payload, is_update=False):
+        """Validate and return building payload. Raises ApiError on failure."""
+        required = ["id", "name", "emoji", "rarity"]
+        if not is_update:
+            for field in required:
+                if field not in payload or not payload[field]:
+                    raise ApiError(f"缺少必填字段：{field}。")
+
+        building_id = str(payload.get("id", "")).strip()
+        name = str(payload.get("name", "")).strip()
+        emoji = str(payload.get("emoji", "")).strip()
+        rarity = payload.get("rarity", "")
+
+        if is_update:
+            if not building_id:
+                raise ApiError("建筑 ID 不能为空。")
+        if name and not name:
+            raise ApiError("建筑名称不能为空。")
+        if emoji and not emoji:
+            raise ApiError("建筑 Emoji 不能为空。")
+        if rarity not in self.VALID_RARITIES:
+            raise ApiError("rarity 必须是 common/rare/epic 之一。")
+
+        effects = payload.get("effects", {})
+        if not isinstance(effects, dict):
+            raise ApiError("effects 必须是字典。")
+        for key, value in effects.items():
+            try:
+                num = float(value)
+                if num < 0:
+                    raise ApiError(f"效果数值不能为负数：{key}={value}。")
+            except (TypeError, ValueError):
+                raise ApiError(f"效果数值无效：{key}={value}。")
+
+        return {
+            "id": building_id,
+            "name": name,
+            "emoji": emoji,
+            "rarity": rarity,
+            "category": payload.get("category", "functional"),
+            "effects": effects,
+            "description": str(payload.get("description", "") or "").strip(),
+        }
+
+    def create_building(self, payload):
+        with self._lock:
+            validated = self._validate_building_payload(payload, is_update=False)
+            custom_buildings = self.game.settings.get("custom_buildings") or {}
+            if validated["id"] in custom_buildings or validated["id"] in _STATIC_BUILDINGS:
+                raise ApiError(f"建筑 ID {validated['id']} 已存在。")
+            custom_buildings = dict(custom_buildings)
+            custom_buildings[validated["id"]] = validated
+            self.game.settings["custom_buildings"] = custom_buildings
+            self._save_locked()
+            return {"building": validated, "state": self._snapshot_locked()}
+
+    def update_building(self, building_id, payload):
+        with self._lock:
+            validated = self._validate_building_payload(payload, is_update=True)
+            custom_buildings = self.game.settings.get("custom_buildings") or {}
+            # Can only edit custom buildings, not static ones
+            if building_id not in custom_buildings:
+                raise ApiError("只能编辑自定义建筑，不能编辑静态建筑。")
+            if validated["id"] != building_id:
+                raise ApiError("不能修改建筑 ID。")
+            custom_buildings = dict(custom_buildings)
+            custom_buildings[building_id] = validated
+            self.game.settings["custom_buildings"] = custom_buildings
+            self._save_locked()
+            return {"building": validated, "state": self._snapshot_locked()}
+
+    def delete_building(self, building_id):
+        with self._lock:
+            custom_buildings = self.game.settings.get("custom_buildings") or {}
+            if building_id not in custom_buildings:
+                raise ApiError("只能删除自定义建筑，不能删除静态建筑。")
+            # Check for instances in inventory, catalog, or campus grid
+            collection = self.game.collection
+            campus = self.game.campus
+            if building_id in collection.inventory:
+                raise ApiError("该建筑仍有实例，无法删除。")
+            if building_id in collection.catalog:
+                raise ApiError("该建筑仍有实例，无法删除。")
+            if building_id in campus.grid.values():
+                raise ApiError("该建筑仍有实例，无法删除。")
+            custom_buildings = dict(custom_buildings)
+            deleted = custom_buildings.pop(building_id, None)
+            self.game.settings["custom_buildings"] = custom_buildings
+            self._save_locked()
+            return {"building": deleted, "state": self._snapshot_locked()}
 
 
 class AppServer(ThreadingHTTPServer):
@@ -415,6 +541,19 @@ def make_handler(app):
 
             if segments == ["api", "settings"] and method == "PATCH":
                 return app.update_settings(payload)
+
+            if segments == ["api", "buildings"] and method == "GET":
+                return app.list_buildings()
+
+            if segments == ["api", "buildings"] and method == "POST":
+                return app.create_building(payload)
+
+            if len(segments) == 3 and segments[:2] == ["api", "buildings"]:
+                building_id = segments[2]
+                if method == "PUT":
+                    return app.update_building(building_id, payload)
+                if method == "DELETE":
+                    return app.delete_building(building_id)
 
             raise ApiError("接口不存在。", status=HTTPStatus.NOT_FOUND)
 

@@ -102,6 +102,16 @@ function bindEvents() {
     resetTaskForm();
     showToast("本地数据已重置。");
   });
+
+  document.getElementById("add-building-type-btn").addEventListener("click", () => {
+    showBuildingForm(null);
+  });
+
+  document.getElementById("export-building-types-btn").addEventListener("click", handleExportBuildings);
+  document.getElementById("import-building-types-btn").addEventListener("click", () => {
+    document.getElementById("import-building-types-file").click();
+  });
+  document.getElementById("import-building-types-file").addEventListener("change", handleImportBuildings);
 }
 
 async function refreshState() {
@@ -466,6 +476,7 @@ function renderSettings() {
     .join("");
 
   renderBuildingIconsManager();
+  renderBuildingTypesManager();
 }
 
 function renderBuildingIconsManager() {
@@ -552,6 +563,322 @@ async function handleIconDelete(event) {
   } catch (err) {
     showToast(err.message || "删除失败。");
   }
+}
+
+// ---- Building Types Manager ----
+
+async function listBuildings() {
+  const data = await api("/api/buildings", "GET");
+  return data.buildings || [];
+}
+
+function getMergedBuildings() {
+  const staticBuildings = BUILDINGS;
+  const customBuildings = uiState.data.settings.custom_buildings || {};
+  // custom overrides static
+  const merged = {};
+  for (const b of staticBuildings) {
+    merged[b.id] = { ...b };
+  }
+  for (const [id, b] of Object.entries(customBuildings)) {
+    merged[id] = { ...b };
+  }
+  return Object.values(merged);
+}
+
+function renderBuildingTypesManager() {
+  const container = document.getElementById("building-types-list");
+  if (!container) return;
+
+  const buildings = getMergedBuildings();
+  if (!buildings.length) {
+    container.innerHTML = `<div class="empty-state">还没有自定义建筑。</div>`;
+    return;
+  }
+
+  container.innerHTML = buildings.map((b) => {
+    const isCustom = Boolean(uiState.data.settings.custom_buildings && uiState.data.settings.custom_buildings[b.id]);
+    return `
+      <div class="building-type-row">
+        <div class="building-type-preview">${escapeHtml(b.emoji)}</div>
+        <div class="building-type-info">
+          <strong>${escapeHtml(b.name)}</strong>
+          <span class="rarity-chip rarity-${escapeHtml(b.rarity)}">${escapeHtml(formatRarity(b.rarity))}</span>
+          <small class="meta-chip">${escapeHtml(formatEffects(b.effects))}</small>
+        </div>
+        <div class="building-type-actions">
+          <button class="text-btn" type="button" data-edit-building="${escapeHtml(b.id)}">编辑</button>
+          <button class="text-btn danger" type="button" data-delete-building="${escapeHtml(b.id)}" ${!isCustom ? "disabled title=\"静态建筑不可删除\"" : ""}>删除</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  container.querySelectorAll("[data-edit-building]").forEach((button) => {
+    button.addEventListener("click", () => showBuildingForm(button.dataset.editBuilding));
+  });
+
+  container.querySelectorAll("[data-delete-building]").forEach((button) => {
+    button.addEventListener("click", () => handleBuildingDelete(button.dataset.deleteBuilding));
+  });
+}
+
+async function handleBuildingDelete(buildingId) {
+  const confirmed = window.confirm("确认删除这个建筑类型吗？该操作不可撤销。");
+  if (!confirmed) return;
+
+  try {
+    await mutate(`/api/buildings/${buildingId}`, "DELETE");
+    showToast("建筑类型已删除。");
+  } catch (err) {
+    showToast(err.message || "删除失败，该建筑类型可能正在被使用。");
+  }
+}
+
+function validateBuildingPayload(building) {
+  if (!building || typeof building !== "object" || Array.isArray(building)) {
+    return "无效的建筑数据。";
+  }
+  if (typeof building.id !== "string" || !building.id.trim()) {
+    return "建筑 ID 必须是字符串且不能为空。";
+  }
+  if (typeof building.name !== "string" || !building.name.trim()) {
+    return "建筑名称不能为空。";
+  }
+  if (typeof building.emoji !== "string" || !building.emoji.trim()) {
+    return "Emoji 图标不能为空。";
+  }
+  if (!["common", "rare", "epic"].includes(building.rarity)) {
+    return "稀有度必须是 common/rare/epic 之一。";
+  }
+  if (building.effects && typeof building.effects === "object") {
+    for (const [, value] of Object.entries(building.effects)) {
+      if (typeof value !== "number" || value < 0) {
+        return "属性数值不能为负数。";
+      }
+    }
+  }
+  return null;
+}
+
+function handleExportBuildings() {
+  const customBuildings = uiState.data.settings.custom_buildings || {};
+  const keys = Object.keys(customBuildings);
+  if (!keys.length) {
+    showToast("没有可导出的自定义建筑。");
+    return;
+  }
+  const json = JSON.stringify(customBuildings, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "custom_buildings.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function handleImportBuildings(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = "";
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    let parsed;
+    try {
+      parsed = JSON.parse(e.target.result);
+    } catch {
+      showToast("文件解析失败，请确认是有效的 JSON。");
+      return;
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      showToast("JSON 结构无效，必须是对象。");
+      return;
+    }
+
+    const customBuildings = uiState.data.settings.custom_buildings || {};
+    const merged = { ...customBuildings };
+    let hasError = false;
+    let errorMsg = "";
+
+    for (const [id, building] of Object.entries(parsed)) {
+      const validationError = validateBuildingPayload({ ...building, id });
+      if (validationError) {
+        hasError = true;
+        errorMsg = `建筑「${id}」：${validationError}`;
+        break;
+      }
+      merged[id] = building;
+    }
+
+    if (hasError) {
+      showToast(errorMsg);
+      return;
+    }
+
+    try {
+      await mutate("/api/settings", "PATCH", { custom_buildings: merged });
+      showToast("导入成功。");
+      renderBuildingTypesManager();
+    } catch (err) {
+      showToast(err.message || "导入失败。");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function showBuildingForm(buildingId) {
+  const modal = document.getElementById("building-form-modal");
+  const layer = document.getElementById("modal-layer");
+
+  let building = null;
+  if (buildingId) {
+    const all = getMergedBuildings();
+    building = all.find((b) => b.id === buildingId);
+  }
+
+  const isEditing = Boolean(building);
+  const title = isEditing ? `编辑建筑 · ${building.name}` : "新建建筑";
+
+  const effectsRows = building && building.effects
+    ? Object.entries(building.effects).map(([key, value]) => `
+        <div class="effect-row" data-effect-index>
+          <input type="text" class="effect-key" value="${escapeHtml(key)}" placeholder="属性名" />
+          <input type="number" class="effect-value" value="${value}" step="0.01" placeholder="数值" />
+          <button type="button" class="icon-delete-btn effect-remove-btn">×</button>
+        </div>
+      `).join("")
+    : "";
+
+  modal.innerHTML = `
+    <p class="card-kicker">建筑类型</p>
+    <h3>${escapeHtml(title)}</h3>
+    <form id="building-form" class="building-form-grid">
+      <div id="building-form-error" class="form-error hidden"></div>
+
+      ${!isEditing ? `
+        <label>
+          <span>建筑 ID</span>
+          <input id="bf-id" type="text" required placeholder="如：my_building" />
+        </label>
+      ` : `<input id="bf-id" type="hidden" value="${escapeHtml(building.id)}" />`}
+
+      <label>
+        <span>名称</span>
+        <input id="bf-name" type="text" required value="${escapeHtml(building?.name || "")}" placeholder="如：教学楼" />
+      </label>
+
+      <label>
+        <span>Emoji 图标</span>
+        <input id="bf-emoji" type="text" required value="${escapeHtml(building?.emoji || "")}" placeholder="如：🏫" maxlength="2" />
+      </label>
+
+      <label>
+        <span>稀有度</span>
+        <select id="bf-rarity" required>
+          <option value="">-- 选择 --</option>
+          <option value="common" ${building?.rarity === "common" ? "selected" : ""}>普通</option>
+          <option value="rare" ${building?.rarity === "rare" ? "selected" : ""}>稀有</option>
+          <option value="epic" ${building?.rarity === "epic" ? "selected" : ""}>史诗</option>
+        </select>
+      </label>
+
+      <label>
+        <span>属性效果</span>
+      </label>
+      <div class="effects-list" id="effects-list">
+        ${effectsRows}
+      </div>
+      <button type="button" class="ghost-btn effects-add-btn" id="add-effect-btn">添加属性</button>
+
+      <label>
+        <span>描述</span>
+        <input id="bf-description" type="text" value="${escapeHtml(building?.description || "")}" placeholder="建筑描述（可选）" />
+      </label>
+
+      <div class="modal-actions">
+        <button class="primary-btn" type="submit">保存</button>
+        <button class="ghost-btn" type="button" id="cancel-building-form-btn">取消</button>
+      </div>
+    </form>
+  `;
+
+  layer.classList.remove("hidden");
+  modal.classList.remove("hidden");
+
+  // Add effect row
+  document.getElementById("add-effect-btn").addEventListener("click", () => {
+    const list = document.getElementById("effects-list");
+    const row = document.createElement("div");
+    row.className = "effect-row";
+    row.setAttribute("data-effect-index", "");
+    row.innerHTML = `
+      <input type="text" class="effect-key" placeholder="属性名" />
+      <input type="number" class="effect-value" step="0.01" placeholder="数值" />
+      <button type="button" class="icon-delete-btn effect-remove-btn">×</button>
+    `;
+    list.appendChild(row);
+  });
+
+  // Remove effect row
+  modal.querySelectorAll(".effect-remove-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.target.closest("[data-effect-index]").remove();
+    });
+  });
+
+  // Cancel button
+  document.getElementById("cancel-building-form-btn").addEventListener("click", closeModals);
+
+  // Form submit
+  document.getElementById("building-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const errorDiv = document.getElementById("building-form-error");
+    errorDiv.classList.add("hidden");
+
+    const id = buildingId || document.getElementById("bf-id").value.trim();
+    const name = document.getElementById("bf-name").value.trim();
+    const emoji = document.getElementById("bf-emoji").value.trim();
+    const rarity = document.getElementById("bf-rarity").value;
+    const description = document.getElementById("bf-description").value.trim();
+
+    // Collect effects first
+    const effects = {};
+    let hasNegative = false;
+    modal.querySelectorAll("[data-effect-index]").forEach((row) => {
+      const key = row.querySelector(".effect-key").value.trim();
+      const value = parseFloat(row.querySelector(".effect-value").value);
+      if (key && !isNaN(value)) {
+        effects[key] = value;
+        if (value < 0) hasNegative = true;
+      }
+    });
+
+    // Validation
+    const validationError = validateBuildingPayload({ id, name, emoji, rarity, effects });
+    if (validationError) {
+      errorDiv.textContent = validationError;
+      errorDiv.classList.remove("hidden");
+      return;
+    }
+
+    const payload = { id, name, emoji, rarity, effects, description };
+
+    try {
+      if (isEditing) {
+        await mutate(`/api/buildings/${buildingId}`, "PUT", payload);
+        showToast("建筑类型已更新。");
+      } else {
+        await mutate("/api/buildings", "POST", payload);
+        showToast("建筑类型已创建。");
+      }
+      closeModals();
+    } catch (err) {
+      errorDiv.textContent = err.message || "保存失败。";
+      errorDiv.classList.remove("hidden");
+    }
+  });
 }
 
 function formatRarity(rarity) {
@@ -789,6 +1116,7 @@ function closeModals() {
   document.getElementById("modal-layer").classList.add("hidden");
   document.getElementById("upgrade-modal").classList.add("hidden");
   document.getElementById("reward-modal").classList.add("hidden");
+  document.getElementById("building-form-modal").classList.add("hidden");
 }
 
 function showToast(message) {

@@ -169,7 +169,7 @@ class StorageMigrationTests(unittest.TestCase):
             storage = Storage(data_path)
             state = storage.load_state()
 
-            self.assertEqual(state["version"], 3)
+            self.assertEqual(state["version"], CURRENT_DATA_VERSION)
             self.assertEqual(state["settings"]["custom_icons"]["teaching_building"], "data:image/png;base64,ABC")
 
 

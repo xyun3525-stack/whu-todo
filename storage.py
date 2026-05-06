@@ -7,7 +7,7 @@ from copy import deepcopy
 from datetime import datetime
 
 DATA_FILE = "data.json"
-CURRENT_DATA_VERSION = 3
+CURRENT_DATA_VERSION = 4
 
 LOAD_STATUS_OK = "ok"
 LOAD_STATUS_MISSING = "missing"
@@ -39,7 +39,7 @@ DEFAULT_STATE = {
         "pity_counter": 0,
     },
     "tasks": [],
-    "settings": {"theme_name": "campus", "custom_icons": {}},
+    "settings": {"theme_name": "campus", "custom_icons": {}, "custom_buildings": {}},
 }
 
 TASK_DEFAULTS = {
@@ -247,7 +247,10 @@ class Storage:
 
         version = data.get("version", 0)
         if version < CURRENT_DATA_VERSION:
-            data = self._migrate_to_v3(data)
+            if version < 3:
+                data = self._migrate_to_v3(data)
+            if version < 4:
+                data = self._migrate_to_v4(data)
 
         return self._normalize_state(data)
 
@@ -260,6 +263,17 @@ class Storage:
         else:
             data["settings"] = {"custom_icons": {}}
         data["version"] = 3
+        return data
+
+    def _migrate_to_v4(self, data):
+        # v3 -> v4: add custom_buildings to settings
+        data = deepcopy(data)
+        if isinstance(data.get("settings"), dict):
+            if "custom_buildings" not in data["settings"]:
+                data["settings"]["custom_buildings"] = {}
+        else:
+            data["settings"] = {"custom_icons": {}, "custom_buildings": {}}
+        data["version"] = 4
         return data
 
     def _migrate_legacy_data(self, data):
