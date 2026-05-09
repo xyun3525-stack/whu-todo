@@ -134,6 +134,37 @@ class WebServerSmokeTests(unittest.TestCase):
         self.assertEqual(created["task"]["title"], "浏览器任务")
         self.assertIn("reward", completed)
 
+    def test_static_buildings_endpoint(self):
+        """GET /api/static-buildings returns all static buildings."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            storage = Storage(f"{tmp_dir}/data.json")
+            try:
+                server = create_server(app=WebGameApp(storage=storage), host="127.0.0.1", port=0)
+            except PermissionError:
+                self.skipTest("Sandbox blocks binding a local TCP port.")
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                base_url = f"http://127.0.0.1:{server.server_address[1]}"
+
+                data = json.loads(urllib.request.urlopen(f"{base_url}/api/static-buildings").read())
+                buildings = data["buildings"]
+                static_ids = {b["id"] for b in buildings}
+
+                self.assertEqual(len(buildings), 5)
+                self.assertIn("teaching_building", static_ids)
+                self.assertIn("leijun_building", static_ids)
+                for b in buildings:
+                    self.assertIn("id", b)
+                    self.assertIn("name", b)
+                    self.assertIn("emoji", b)
+                    self.assertIn("rarity", b)
+                    self.assertIn("effects", b)
+            finally:
+                server.shutdown()
+                thread.join(timeout=5)
+                server.server_close()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,13 +9,16 @@ const uiState = {
   heroQuoteTimer: null,
 };
 
-const BUILDINGS = [
-  { id: "teaching_building", name: "教学楼", emoji: "🏫", rarity: "common", category: "functional", effects: { xp_bonus: 0.05 }, description: "日常学习与课堂推进的核心区域。" },
-  { id: "college_building", name: "学院楼", emoji: "🏢", rarity: "common", category: "functional", effects: { weekly_bonus: 0.05 }, description: "学院与教师办公所在的功能楼群。" },
-  { id: "office_building", name: "行政楼", emoji: "🏬", rarity: "common", category: "functional", effects: { coin_bonus: 0.05 }, description: "带来更稳定金币收益的行政中心。" },
-  { id: "school_gate", name: "校门", emoji: "🏛", rarity: "rare", category: "landmark", effects: { rare_drop_bonus: 0.08 }, description: "极具辨识度的校园地标入口。" },
-  { id: "leijun_building", name: "创新塔", emoji: "🌟", rarity: "epic", category: "landmark", effects: { streak_bonus: 0.1, rare_drop_bonus: 0.12 }, description: "高稀有度地标建筑，拥有更强成长加成。" },
-];
+let BUILDINGS = [];
+
+async function initStaticBuildings() {
+  try {
+    const data = await api("/api/static-buildings", "GET");
+    BUILDINGS = data.buildings || [];
+  } catch {
+    BUILDINGS = [];
+  }
+}
 
 const HERO_QUOTES = [
   {
@@ -44,7 +47,8 @@ const HERO_QUOTES = [
   },
 ];
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  await initStaticBuildings();
   bindEvents();
   initHeroQuoteRotation();
   refreshState();

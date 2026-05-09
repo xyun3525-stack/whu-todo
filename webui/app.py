@@ -352,6 +352,24 @@ class WebGameApp:
                     })
             return {"buildings": all_buildings, "state": self._snapshot_locked()}
 
+    def static_buildings(self):
+        """Return static building definitions only (no custom). Used by frontend to sync BUILDINGS."""
+        with self._lock:
+            buildings = []
+            for building_id in _STATIC_BUILDINGS:
+                building = _static_get_building_by_id(building_id)
+                if building:
+                    buildings.append({
+                        "id": building["id"],
+                        "name": building["name"],
+                        "emoji": building["emoji"],
+                        "rarity": building["rarity"],
+                        "category": building["category"],
+                        "effects": dict(building.get("effects", {})),
+                        "description": building.get("description", ""),
+                    })
+            return {"buildings": buildings}
+
     def _validate_building_payload(self, payload, is_update=False):
         """Validate and return building payload. Raises ApiError on failure."""
         required = ["id", "name", "emoji", "rarity"]
@@ -544,6 +562,9 @@ def make_handler(app):
 
             if segments == ["api", "buildings"] and method == "GET":
                 return app.list_buildings()
+
+            if segments == ["api", "static-buildings"] and method == "GET":
+                return app.static_buildings()
 
             if segments == ["api", "buildings"] and method == "POST":
                 return app.create_building(payload)
