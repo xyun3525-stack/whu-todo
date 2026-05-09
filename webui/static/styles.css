@@ -336,6 +336,17 @@ button {
   gap: 10px;
 }
 
+.task-search-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.task-search-bar input[type="search"] {
+  flex: 1 1 200px;
+}
+
 .pill {
   padding: 8px 12px;
   border-radius: 999px;

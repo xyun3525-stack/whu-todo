@@ -66,6 +66,9 @@ function bindEvents() {
     });
   });
 
+  document.getElementById("task-search-input").addEventListener("input", () => renderTasks());
+  document.getElementById("task-priority-filter").addEventListener("change", () => renderTasks());
+
   document.getElementById("quick-add-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const title = document.getElementById("quick-task-title").value.trim();
@@ -304,7 +307,17 @@ function renderTasks() {
     button.classList.toggle("active", button.dataset.taskView === uiState.taskView);
   });
 
-  const tasks = uiState.data.tasks[uiState.taskView] || [];
+  const searchTerm = (document.getElementById("task-search-input")?.value || "").toLowerCase().trim();
+  const priorityFilter = document.getElementById("task-priority-filter")?.value || "";
+
+  let tasks = uiState.data.tasks[uiState.taskView] || [];
+  if (searchTerm) {
+    tasks = tasks.filter((t) => t.title.toLowerCase().includes(searchTerm));
+  }
+  if (priorityFilter) {
+    tasks = tasks.filter((t) => t.priority === priorityFilter);
+  }
+
   renderTaskCollection("task-list", tasks, {
     allowEdit: true,
     showCompleted: uiState.taskView === "completed",
