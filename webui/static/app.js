@@ -188,13 +188,18 @@ function renderAll() {
   if (!uiState.data) {
     return;
   }
-  switchView(uiState.activeView, false);
   renderHero();
-  renderToday();
-  renderTasks();
-  renderCampus();
+  renderByView(uiState.activeView);
   renderGrowth();
-  renderSettings();
+}
+
+function renderByView(view) {
+  switch (view) {
+    case "today":   renderToday(); break;
+    case "tasks":  renderTasks(); break;
+    case "campus": renderCampus(); break;
+    case "settings": renderSettings(); break;
+  }
 }
 
 function switchView(view, rerender = true) {
@@ -206,7 +211,9 @@ function switchView(view, rerender = true) {
     panel.classList.toggle("active", panel.dataset.panel === view);
   });
   if (rerender && uiState.data) {
-    renderAll();
+    renderHero();
+    renderByView(view);
+    renderGrowth();
   }
 }
 
@@ -962,30 +969,22 @@ function renderTaskCollection(containerId, tasks, options) {
     })
     .join("");
 
-  container.querySelectorAll("[data-complete-task]").forEach((button) => {
-    button.addEventListener("click", () => completeTask(button.dataset.completeTask));
-  });
-
-  container.querySelectorAll("[data-edit-task]").forEach((button) => {
-    button.addEventListener("click", () => beginEditTask(button.dataset.editTask));
-  });
-
-  container.querySelectorAll("[data-delete-task]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const confirmed = window.confirm("确认删除这个任务吗？");
-      if (!confirmed) {
-        return;
-      }
-      try {
-        await mutate(`/api/tasks/${button.dataset.deleteTask}`, "DELETE");
-        if (uiState.editingTaskId === button.dataset.deleteTask) {
-          resetTaskForm();
-        }
-        showToast("任务已删除。");
-      } catch (error) {
-        showToast(error.message);
-      }
-    });
+  container.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-complete-task]");
+    if (btn) { completeTask(btn.dataset.completeTask); return; }
+    const editBtn = e.target.closest("[data-edit-task]");
+    if (editBtn) { beginEditTask(editBtn.dataset.editTask); return; }
+    const delBtn = e.target.closest("[data-delete-task]");
+    if (delBtn) {
+      if (!window.confirm("确认删除这个任务吗？")) return;
+      (async () => {
+        try {
+          await mutate(`/api/tasks/${delBtn.dataset.deleteTask}`, "DELETE");
+          if (uiState.editingTaskId === delBtn.dataset.deleteTask) resetTaskForm();
+          showToast("任务已删除。");
+        } catch (error) { showToast(error.message); }
+      })();
+    }
   });
 }
 
