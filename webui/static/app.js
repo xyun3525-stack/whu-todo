@@ -69,7 +69,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function bindEvents() {
-  // Keyboard shortcuts: n=new task, /=focus search, Escape=cancel edit, Ctrl+Z=undo delete
   document.addEventListener("keydown", (e) => {
     if (e.key === "/" && !e.target.matches("input, textarea")) {
       e.preventDefault();
@@ -82,23 +81,31 @@ function bindEvents() {
       return;
     }
     if (e.key === "Escape") {
-      if (uiState.editingTaskId) { resetTaskForm(); return; }
-      const modal = document.querySelector(".modal.active");
-      if (modal) { modal.remove(); return; }
+      if (uiState.editingTaskId) {
+        resetTaskForm();
+        return;
+      }
+      const modal = document.querySelector("dialog[open]");
+      if (modal?.close) {
+        modal.close();
+        return;
+      }
       document.getElementById("task-search-input")?.blur();
       return;
     }
-    // Ctrl+Z: undo recent soft-delete
     if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.target.matches("input, textarea")) {
       const undoId = uiState._lastDeleteUndoId;
       const undoTs = uiState._lastDeleteUndoTs;
       if (undoId && Date.now() - undoTs < 5500) {
         (async () => {
           try {
-            await api(`/api/tasks/${undoId}/undo`, "POST");
+            await mutate(`/api/tasks/${undoId}/undo`, "POST", {});
             uiState._lastDeleteUndoId = null;
+            uiState._lastDeleteUndoTs = null;
             showToast("已恢复任务。");
-          } catch { showToast("撤销已过期。"); }
+          } catch {
+            showToast("撤销已过期。");
+          }
         })();
       }
     }
@@ -224,9 +231,14 @@ async function api(path, method, payload) {
     options.body = JSON.stringify(payload);
   }
   const response = await fetch(path, options);
-  const data = await response.json();
+  const contentType = response.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  const data = isJson ? await response.json() : await response.blob();
   if (!response.ok) {
-    throw new Error(data.error || "请求失败。");
+    if (isJson) {
+      throw new Error(data.error || "请求失败。");
+    }
+    throw new Error("请求失败。");
   }
   return data;
 }
@@ -562,20 +574,9 @@ async function renderBuildingIconsManager() {
   const container = document.getElementById("building-icons-list");
   const customIcons = uiState.data.settings.custom_icons || {};
 
-  async function getIconSrc(buildingId, iconRef) {
-    if (!iconRef) return null;
-    if (iconRef.startsWith("data:")) return iconRef;
-    if (_iconCache[buildingId]) return _iconCache[buildingId];
-    try {
-      const data = await api(`/api/icons/${encodeURIComponent(buildingId)}`, "GET");
-      _iconCache[buildingId] = data.__icon__;
-      return data.__icon__;
-    } catch { return null; }
-  }
-
   const rows = await Promise.all(BUILDINGS.map(async (building) => {
     const iconRef = customIcons[building.id];
-    const imgSrc = await getIconSrc(building.id, iconRef);
+    const imgSrc = await _ensureIcon(building.id, iconRef);
     const previewContent = imgSrc
       ? `<img src="${escapeHtml(imgSrc)}" class="icon-preview-img" alt="${escapeHtml(building.name)}" />`
       : `<span class="icon-preview-emoji">${escapeHtml(building.emoji)}</span>`;
@@ -605,12 +606,10 @@ async function renderBuildingIconsManager() {
 
   container.innerHTML = rows.join("");
 
-  // Bind upload handlers
   container.querySelectorAll("[data-upload-icon]").forEach((input) => {
     input.addEventListener("change", handleIconUpload);
   });
 
-  // Bind delete handlers
   container.querySelectorAll("[data-delete-icon]").forEach((button) => {
     button.addEventListener("click", handleIconDelete);
   });

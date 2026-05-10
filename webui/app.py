@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import mimetypes
 import os
 import threading
+import time
 import webbrowser
 from dataclasses import asdict
 from datetime import datetime
@@ -23,15 +25,18 @@ from storage import Storage
 # Configure module-level logger
 _logger = logging.getLogger("whu_todo.app")
 _logger.setLevel(logging.INFO)
-_handler = logging.StreamHandler()
-_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-_logger.addHandler(_handler)
+if not _logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    _logger.addHandler(_handler)
+_logger.propagate = False
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 ICONS_DIR = Path(__file__).resolve().parent.parent / "icons"
 
 MAX_BODY_SIZE = 1_048_576  # 1 MB max request body
 _UNDO_DELAY_SECS = 5  # 5-second undo window for soft-delete
+
 
 
 class ApiError(ValueError):
@@ -255,21 +260,19 @@ class WebGameApp:
             return {"task": self._serialize_task(task), "state": self._snapshot_locked()}
 
     def delete_task(self, task_id):
-        """Soft-delete a task with 5s undo window. Returns immediately; task is removed after window."""
         with self._lock:
             task = self.game._find_task(task_id)
             if not task:
                 raise ApiError("未找到任务。", status=HTTPStatus.NOT_FOUND)
-            # Store for undo
             self._deleted_tasks[task_id] = task
             self.game.delete_task(task_id)
             self._save_locked()
-        # Schedule hard delete after undo window (outside lock)
+
         def _purge():
-            import time
             time.sleep(_UNDO_DELAY_SECS)
             with self._lock:
                 self._deleted_tasks.pop(task_id, None)
+
         threading.Thread(target=_purge, daemon=True).start()
         return {"state": self._snapshot_locked(), "undo_id": task_id}
 
@@ -497,45 +500,36 @@ class WebGameApp:
             self._save_locked()
             return {"building": deleted, "state": self._snapshot_locked()}
 
-    # ---- Icon file management ----
-
-    def _icon_path(self, building_id):
-        """Return path to icon file for building_id. Creates icons dir if needed."""
+    def _icon_path(self, building_id, icon_ref=None):
         os.makedirs(ICONS_DIR, exist_ok=True)
-        icon_ref = self.game.settings.get("custom_icons", {}).get(building_id)
-        if icon_ref and not icon_ref.startswith("data:"):
-            # Pointer is a file extension, e.g. ".png"
-            return ICONS_DIR / f"{building_id}{icon_ref}"
+        ref = icon_ref if icon_ref is not None else self.game.settings.get("custom_icons", {}).get(building_id)
+        if ref and not ref.startswith("data:"):
+            return ICONS_DIR / f"{building_id}{ref}"
         return None
 
     def get_icon(self, building_id):
-        """Return icon image data:URL or file-based icon bytes."""
         with self._lock:
             icon_ref = self.game.settings.get("custom_icons", {}).get(building_id)
             if not icon_ref:
                 raise ApiError("图标不存在。", status=HTTPStatus.NOT_FOUND)
             if icon_ref.startswith("data:"):
-                # Legacy inline data:URL stored in settings
                 return {"__icon__": icon_ref}
-            # File-based: read from disk
-            icon_path = ICONS_DIR / f"{building_id}{icon_ref}"
-            if not icon_path.exists():
+            icon_path = self._icon_path(building_id, icon_ref)
+            if not icon_path or not icon_path.exists():
                 raise ApiError("图标文件不存在。", status=HTTPStatus.NOT_FOUND)
             mime = self._mime_for_ext(icon_ref)
             with open(icon_path, "rb") as f:
                 data = f.read()
-            import base64
             return {"__icon__": f"data:{mime};base64,{base64.b64encode(data).decode()}"}
 
     def upload_icon(self, building_id, payload):
-        """Save icon file and store extension pointer in settings."""
         icon_data = payload.get("icon")
         if not icon_data or not isinstance(icon_data, str) or not icon_data.startswith("data:"):
             raise ApiError("无效的图标数据，需要 data:URL 格式。")
         mime, data_bytes = self._parse_data_url(icon_data)
         ext = self._ext_for_mime(mime)
         with self._lock:
-            icon_path = ICONS_DIR / f"{building_id}{ext}"
+            icon_path = self._icon_path(building_id, ext)
             with open(icon_path, "wb") as f:
                 f.write(data_bytes)
             custom_icons = dict(self.game.settings.get("custom_icons") or {})
@@ -545,33 +539,31 @@ class WebGameApp:
         return {"state": self._snapshot_locked()}
 
     def delete_icon(self, building_id):
-        """Remove icon file and clear pointer from settings."""
         with self._lock:
             icon_ref = self.game.settings.get("custom_icons", {}).get(building_id)
-            if icon_ref and not icon_ref.startswith("data:"):
-                icon_path = ICONS_DIR / f"{building_id}{icon_ref}"
-                if icon_path.exists():
+            icon_path = self._icon_path(building_id, icon_ref)
+            if icon_path:
+                try:
                     os.remove(icon_path)
+                except FileNotFoundError:
+                    pass
             custom_icons = dict(self.game.settings.get("custom_icons") or {})
-            if building_id in custom_icons:
-                del custom_icons[building_id]
+            custom_icons.pop(building_id, None)
             self.game.settings["custom_icons"] = custom_icons
             self._save_locked()
         return {"state": self._snapshot_locked()}
 
     def _parse_data_url(self, data_url):
-        """Parse data:URL into (mime, raw_bytes)."""
         header, b64_data = data_url.split(",", 1)
         mime = header.split(";")[0].split(":")[1]
-        import base64
         return mime, base64.b64decode(b64_data)
 
     def _ext_for_mime(self, mime):
-        ext = { "image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp" }.get(mime)
+        ext = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp"}.get(mime)
         return ext or ".bin"
 
     def _mime_for_ext(self, ext):
-        return { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp" }.get(ext, "application/octet-stream")
+        return {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp"}.get(ext, "application/octet-stream")
 
 
 class AppServer(ThreadingHTTPServer):
@@ -704,7 +696,7 @@ def make_handler(app):
                 if method == "GET":
                     return app.get_icon(building_id)
                 if method == "POST":
-                    return app.upload_icon(building_id, self._read_json())
+                    return app.upload_icon(building_id, payload)
                 if method == "DELETE":
                     return app.delete_icon(building_id)
 
