@@ -9,6 +9,20 @@ const uiState = {
   heroQuoteTimer: null,
 };
 
+// Client-side cache for icon data:URLs fetched from GET /api/icons/{id}
+const _iconCache = {};
+
+async function _ensureIcon(buildingId, iconRef) {
+  if (!iconRef) return null;
+  if (iconRef.startsWith("data:")) return iconRef;
+  if (_iconCache[buildingId]) return _iconCache[buildingId];
+  try {
+    const data = await api(`/api/icons/${encodeURIComponent(buildingId)}`, "GET");
+    _iconCache[buildingId] = data.__icon__;
+    return _iconCache[buildingId];
+  } catch { return null; }
+}
+
 let BUILDINGS = [];
 
 async function initStaticBuildings() {
@@ -55,6 +69,41 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function bindEvents() {
+  // Keyboard shortcuts: n=new task, /=focus search, Escape=cancel edit, Ctrl+Z=undo delete
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "/" && !e.target.matches("input, textarea")) {
+      e.preventDefault();
+      document.getElementById("task-search-input")?.focus();
+      return;
+    }
+    if (e.key === "n" && !e.target.matches("input, textarea")) {
+      e.preventDefault();
+      document.getElementById("task-title")?.focus();
+      return;
+    }
+    if (e.key === "Escape") {
+      if (uiState.editingTaskId) { resetTaskForm(); return; }
+      const modal = document.querySelector(".modal.active");
+      if (modal) { modal.remove(); return; }
+      document.getElementById("task-search-input")?.blur();
+      return;
+    }
+    // Ctrl+Z: undo recent soft-delete
+    if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.target.matches("input, textarea")) {
+      const undoId = uiState._lastDeleteUndoId;
+      const undoTs = uiState._lastDeleteUndoTs;
+      if (undoId && Date.now() - undoTs < 5500) {
+        (async () => {
+          try {
+            await api(`/api/tasks/${undoId}/undo`, "POST");
+            uiState._lastDeleteUndoId = null;
+            showToast("已恢复任务。");
+          } catch { showToast("撤销已过期。"); }
+        })();
+      }
+    }
+  });
+
   document.querySelectorAll(".tab-link").forEach((button) => {
     button.addEventListener("click", () => switchView(button.dataset.view));
   });
@@ -324,7 +373,7 @@ function renderTasks() {
   });
 }
 
-function renderCampus() {
+async function renderCampus() {
   const campus = uiState.data.campus;
   document.getElementById("campus-name-heading").textContent = campus.name;
   document.getElementById("campus-name-input").value = campus.name;
@@ -345,6 +394,12 @@ function renderCampus() {
     : "当前未选择建筑";
 
   const customIcons = uiState.data.settings.custom_icons || {};
+
+  // Pre-fetch all icons needed for inventory and grid (parallel)
+  const allNeeded = new Set(Object.keys(customIcons).filter((k) => customIcons[k] && !customIcons[k].startsWith("data:")));
+  const fetchPromises = [...allNeeded].map((id) => _ensureIcon(id, customIcons[id]));
+  await Promise.all(fetchPromises);
+
   const inventoryList = document.getElementById("inventory-list");
   if (!campus.inventory_stacks.length) {
     inventoryList.innerHTML = `<div class="empty-state">背包里还没有建筑掉落。</div>`;
@@ -503,16 +558,28 @@ function renderSettings() {
   renderBuildingTypesManager();
 }
 
-function renderBuildingIconsManager() {
+async function renderBuildingIconsManager() {
   const container = document.getElementById("building-icons-list");
   const customIcons = uiState.data.settings.custom_icons || {};
 
-  container.innerHTML = BUILDINGS.map((building) => {
-    const customIcon = customIcons[building.id];
-    const previewContent = customIcon
-      ? `<img src="${escapeHtml(customIcon)}" class="icon-preview-img" alt="${escapeHtml(building.name)}" />`
+  async function getIconSrc(buildingId, iconRef) {
+    if (!iconRef) return null;
+    if (iconRef.startsWith("data:")) return iconRef;
+    if (_iconCache[buildingId]) return _iconCache[buildingId];
+    try {
+      const data = await api(`/api/icons/${encodeURIComponent(buildingId)}`, "GET");
+      _iconCache[buildingId] = data.__icon__;
+      return data.__icon__;
+    } catch { return null; }
+  }
+
+  const rows = await Promise.all(BUILDINGS.map(async (building) => {
+    const iconRef = customIcons[building.id];
+    const imgSrc = await getIconSrc(building.id, iconRef);
+    const previewContent = imgSrc
+      ? `<img src="${escapeHtml(imgSrc)}" class="icon-preview-img" alt="${escapeHtml(building.name)}" />`
       : `<span class="icon-preview-emoji">${escapeHtml(building.emoji)}</span>`;
-    const deleteButton = customIcon
+    const deleteButton = iconRef
       ? `<button class="icon-delete-btn" type="button" data-delete-icon="${escapeHtml(building.id)}">删除</button>`
       : "";
 
@@ -528,13 +595,15 @@ function renderBuildingIconsManager() {
         <div class="icon-manager-actions">
           <label class="icon-upload-btn">
             <input type="file" accept="image/*" class="hidden" data-upload-icon="${escapeHtml(building.id)}" />
-            ${customIcon ? "替换" : "上传"}
+            ${imgSrc ? "替换" : "上传"}
           </label>
           ${deleteButton}
         </div>
       </div>
     `;
-  }).join("");
+  }));
+
+  container.innerHTML = rows.join("");
 
   // Bind upload handlers
   container.querySelectorAll("[data-upload-icon]").forEach((input) => {
@@ -562,9 +631,10 @@ async function handleIconUpload(event) {
   reader.onload = async (e) => {
     const dataUrl = e.target.result;
     try {
-      await mutate("/api/settings", "PATCH", {
-        custom_icons: { [buildingId]: dataUrl },
+      await mutate(`/api/icons/${encodeURIComponent(buildingId)}`, "POST", {
+        icon: dataUrl,
       });
+      _iconCache[buildingId] = dataUrl;
       showToast("图标已上传。");
     } catch (err) {
       showToast(err.message || "上传失败。");
@@ -580,9 +650,8 @@ async function handleIconDelete(event) {
   if (!confirmed) return;
 
   try {
-    await mutate("/api/settings", "PATCH", {
-      custom_icons: { [buildingId]: null },
-    });
+    await mutate(`/api/icons/${encodeURIComponent(buildingId)}`, "DELETE");
+    delete _iconCache[buildingId];
     showToast("图标已删除。");
   } catch (err) {
     showToast(err.message || "删除失败。");
@@ -992,9 +1061,12 @@ function renderTaskCollection(containerId, tasks, options) {
       if (!window.confirm("确认删除这个任务吗？")) return;
       (async () => {
         try {
-          await mutate(`/api/tasks/${delBtn.dataset.deleteTask}`, "DELETE");
+          const response = await mutate(`/api/tasks/${delBtn.dataset.deleteTask}`, "DELETE");
           if (uiState.editingTaskId === delBtn.dataset.deleteTask) resetTaskForm();
-          showToast("任务已删除。");
+          showToast("任务已删除，5秒内可撤销。", 6000);
+          // Store undo info for Ctrl+Z shortcut
+          uiState._lastDeleteUndoId = delBtn.dataset.deleteTask;
+          uiState._lastDeleteUndoTs = Date.now();
         } catch (error) { showToast(error.message); }
       })();
     }

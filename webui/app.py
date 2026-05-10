@@ -31,6 +31,7 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 ICONS_DIR = Path(__file__).resolve().parent.parent / "icons"
 
 MAX_BODY_SIZE = 1_048_576  # 1 MB max request body
+_UNDO_DELAY_SECS = 5  # 5-second undo window for soft-delete
 
 
 class ApiError(ValueError):
@@ -51,6 +52,7 @@ class WebGameApp:
         self.storage = storage or Storage()
         self._lock = threading.RLock()
         self._pending_upgrade = None
+        self._deleted_tasks = {}  # task_id -> Task, for 5s undo window
         self.game = game or self._load_game(self.storage.load_state())
 
     def _load_game(self, state):
@@ -253,11 +255,33 @@ class WebGameApp:
             return {"task": self._serialize_task(task), "state": self._snapshot_locked()}
 
     def delete_task(self, task_id):
+        """Soft-delete a task with 5s undo window. Returns immediately; task is removed after window."""
         with self._lock:
-            if not self.game.delete_task(task_id):
+            task = self.game._find_task(task_id)
+            if not task:
                 raise ApiError("未找到任务。", status=HTTPStatus.NOT_FOUND)
+            # Store for undo
+            self._deleted_tasks[task_id] = task
+            self.game.delete_task(task_id)
             self._save_locked()
-            return {"state": self._snapshot_locked()}
+        # Schedule hard delete after undo window (outside lock)
+        def _purge():
+            import time
+            time.sleep(_UNDO_DELAY_SECS)
+            with self._lock:
+                self._deleted_tasks.pop(task_id, None)
+        threading.Thread(target=_purge, daemon=True).start()
+        return {"state": self._snapshot_locked(), "undo_id": task_id}
+
+    def undo_delete(self, task_id):
+        """Restore a soft-deleted task within the undo window."""
+        with self._lock:
+            if task_id not in self._deleted_tasks:
+                raise ApiError("撤销已过期或无效。", status=HTTPStatus.NOT_FOUND)
+            task = self._deleted_tasks.pop(task_id)
+            self.game.tasks.append(task)
+            self._save_locked()
+        return {"state": self._snapshot_locked()}
 
     def complete_task(self, task_id):
         with self._lock:
@@ -639,6 +663,10 @@ def make_handler(app):
             if len(segments) == 4 and segments[:2] == ["api", "tasks"] and segments[3] == "complete":
                 if method == "POST":
                     return app.complete_task(segments[2])
+
+            if len(segments) == 4 and segments[:2] == ["api", "tasks"] and segments[3] == "undo":
+                if method == "POST":
+                    return app.undo_delete(segments[2])
 
             if segments == ["api", "upgrades"] and method == "POST":
                 return app.apply_upgrade(payload.get("choice_type"))

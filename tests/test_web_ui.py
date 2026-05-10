@@ -84,6 +84,33 @@ class WebAppFlowTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "升级奖励"):
                 app.complete_task(tasks[1].id)
 
+    def test_soft_delete_and_undo_within_window(self):
+        """DELETE /api/tasks/{id} soft-deletes; POST /api/tasks/{id}/undo restores it."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            storage = Storage(f"{tmp_dir}/data.json")
+            tasks = [
+                Task("待删除事项", scheduled_for_today=True),
+            ]
+            app = WebGameApp(
+                storage=storage,
+                game=GameLogic(Player(), Campus(), Collection(), tasks),
+            )
+            task_id = tasks[0].id
+
+            delete_result = app.delete_task(task_id)
+            self.assertIn("undo_id", delete_result)
+            self.assertIn("state", delete_result)
+            self.assertEqual(task_id, delete_result["undo_id"])
+            # Task no longer in active (planned) list
+            self.assertNotIn(task_id, {t["id"] for t in delete_result["state"]["tasks"]["planned"]})
+
+            undo_result = app.undo_delete(task_id)
+            self.assertIn("state", undo_result)
+            # Task restored to planned list
+            restored = [t for t in undo_result["state"]["tasks"]["planned"] if t["id"] == task_id]
+            self.assertEqual(len(restored), 1)
+            self.assertEqual(restored[0]["title"], "待删除事项")
+
 
 class WebServerSmokeTests(unittest.TestCase):
     def test_static_frontend_assets_exist(self):
