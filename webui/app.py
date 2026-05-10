@@ -30,6 +30,8 @@ _logger.addHandler(_handler)
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 ICONS_DIR = Path(__file__).resolve().parent.parent / "icons"
 
+MAX_BODY_SIZE = 1_048_576  # 1 MB max request body
+
 
 class ApiError(ValueError):
     """User-facing API error with an HTTP status."""
@@ -684,6 +686,8 @@ def make_handler(app):
             length = int(self.headers.get("Content-Length", "0"))
             if length <= 0:
                 return {}
+            if length > MAX_BODY_SIZE:
+                raise ApiError("请求体过大。")
             body = self.rfile.read(length)
             if not body:
                 return {}
