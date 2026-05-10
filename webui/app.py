@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import logging
 import mimetypes
+import os
 import threading
 import webbrowser
 from dataclasses import asdict
@@ -18,7 +20,15 @@ from game_logic import GameLogic, get_building_def
 from models import Campus, Collection, Player, Task
 from storage import Storage
 
+# Configure module-level logger
+_logger = logging.getLogger("whu_todo.app")
+_logger.setLevel(logging.INFO)
+_handler = logging.StreamHandler()
+_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+_logger.addHandler(_handler)
+
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+ICONS_DIR = Path(__file__).resolve().parent.parent / "icons"
 
 
 class ApiError(ValueError):
@@ -461,6 +471,82 @@ class WebGameApp:
             self._save_locked()
             return {"building": deleted, "state": self._snapshot_locked()}
 
+    # ---- Icon file management ----
+
+    def _icon_path(self, building_id):
+        """Return path to icon file for building_id. Creates icons dir if needed."""
+        os.makedirs(ICONS_DIR, exist_ok=True)
+        icon_ref = self.game.settings.get("custom_icons", {}).get(building_id)
+        if icon_ref and not icon_ref.startswith("data:"):
+            # Pointer is a file extension, e.g. ".png"
+            return ICONS_DIR / f"{building_id}{icon_ref}"
+        return None
+
+    def get_icon(self, building_id):
+        """Return icon image data:URL or file-based icon bytes."""
+        with self._lock:
+            icon_ref = self.game.settings.get("custom_icons", {}).get(building_id)
+            if not icon_ref:
+                raise ApiError("图标不存在。", status=HTTPStatus.NOT_FOUND)
+            if icon_ref.startswith("data:"):
+                # Legacy inline data:URL stored in settings
+                return {"__icon__": icon_ref}
+            # File-based: read from disk
+            icon_path = ICONS_DIR / f"{building_id}{icon_ref}"
+            if not icon_path.exists():
+                raise ApiError("图标文件不存在。", status=HTTPStatus.NOT_FOUND)
+            mime = self._mime_for_ext(icon_ref)
+            with open(icon_path, "rb") as f:
+                data = f.read()
+            import base64
+            return {"__icon__": f"data:{mime};base64,{base64.b64encode(data).decode()}"}
+
+    def upload_icon(self, building_id, payload):
+        """Save icon file and store extension pointer in settings."""
+        icon_data = payload.get("icon")
+        if not icon_data or not isinstance(icon_data, str) or not icon_data.startswith("data:"):
+            raise ApiError("无效的图标数据，需要 data:URL 格式。")
+        mime, data_bytes = self._parse_data_url(icon_data)
+        ext = self._ext_for_mime(mime)
+        with self._lock:
+            icon_path = ICONS_DIR / f"{building_id}{ext}"
+            with open(icon_path, "wb") as f:
+                f.write(data_bytes)
+            custom_icons = dict(self.game.settings.get("custom_icons") or {})
+            custom_icons[building_id] = ext
+            self.game.settings["custom_icons"] = custom_icons
+            self._save_locked()
+        return {"state": self._snapshot_locked()}
+
+    def delete_icon(self, building_id):
+        """Remove icon file and clear pointer from settings."""
+        with self._lock:
+            icon_ref = self.game.settings.get("custom_icons", {}).get(building_id)
+            if icon_ref and not icon_ref.startswith("data:"):
+                icon_path = ICONS_DIR / f"{building_id}{icon_ref}"
+                if icon_path.exists():
+                    os.remove(icon_path)
+            custom_icons = dict(self.game.settings.get("custom_icons") or {})
+            if building_id in custom_icons:
+                del custom_icons[building_id]
+            self.game.settings["custom_icons"] = custom_icons
+            self._save_locked()
+        return {"state": self._snapshot_locked()}
+
+    def _parse_data_url(self, data_url):
+        """Parse data:URL into (mime, raw_bytes)."""
+        header, b64_data = data_url.split(",", 1)
+        mime = header.split(";")[0].split(":")[1]
+        import base64
+        return mime, base64.b64decode(b64_data)
+
+    def _ext_for_mime(self, mime):
+        ext = { "image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp" }.get(mime)
+        return ext or ".bin"
+
+    def _mime_for_ext(self, ext):
+        return { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp" }.get(ext, "application/octet-stream")
+
 
 class AppServer(ThreadingHTTPServer):
     daemon_threads = True
@@ -517,12 +603,19 @@ def make_handler(app):
             try:
                 payload = self._read_json() if method in {"POST", "PUT", "PATCH"} else {}
                 response = self._dispatch_api(method, path, payload)
-                self._send_json(HTTPStatus.OK, response)
+                # Icon GET returns a data:URL wrapped in __icon__ key
+                if isinstance(response, dict) and "__icon__" in response:
+                    self._send_data_url(response["__icon__"])
+                else:
+                    self._send_json(HTTPStatus.OK, response)
             except ApiError as exc:
+                _logger.warning("API error %s %s: %s", method, path, exc)
                 self._send_json(exc.status, {"error": str(exc)})
             except json.JSONDecodeError:
+                _logger.warning("API error %s %s: invalid JSON", method, path)
                 self._send_json(HTTPStatus.BAD_REQUEST, {"error": "JSON 请求体格式无效。"})
-            except Exception:
+            except Exception as exc:
+                _logger.exception("Internal error handling %s %s", method, path)
                 self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "服务器内部错误。"})
 
         def _dispatch_api(self, method, path, payload):
@@ -576,6 +669,15 @@ def make_handler(app):
                 if method == "DELETE":
                     return app.delete_building(building_id)
 
+            if len(segments) == 3 and segments[:2] == ["api", "icons"]:
+                building_id = segments[2]
+                if method == "GET":
+                    return app.get_icon(building_id)
+                if method == "POST":
+                    return app.upload_icon(building_id, self._read_json())
+                if method == "DELETE":
+                    return app.delete_icon(building_id)
+
             raise ApiError("接口不存在。", status=HTTPStatus.NOT_FOUND)
 
         def _read_json(self):
@@ -592,6 +694,19 @@ def make_handler(app):
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _send_data_url(self, data_url):
+            """Send a data:URL as a proper image response."""
+            header, b64_data = data_url.split(",", 1)
+            import base64
+            body = base64.b64decode(b64_data)
+            mime = header.split(";")[0].split(":")[1]
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", mime)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "private, max-age=3600")
             self.end_headers()
             self.wfile.write(body)
 

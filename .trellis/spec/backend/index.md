@@ -18,7 +18,7 @@ Python application with two UI layers (tkinter + web) sharing a common core. Bus
 | [Database Guidelines](./database-guidelines.md) | ORM patterns, migrations | To fill |
 | [Error Handling](./error-handling.md) | ApiError, 400/404/500 conventions | ✅ Filled |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
-| [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | To fill |
+| [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | ✅ Filled |
 
 ---
 
