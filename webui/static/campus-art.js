@@ -67,8 +67,14 @@ function renderBuildingIllustration(building, seed, variant = "card", customIcon
     return "";
   }
 
-  if (customIcon) {
-    return `<img class="art-img" src="${customIcon}" alt="${escapeHtml(building.name)}" />`;
+  // Resolve file-extension icon refs from the shared client-side cache
+  let resolvedIcon = customIcon;
+  if (customIcon && typeof customIcon === "string" && !customIcon.startsWith("data:") && window._iconCache) {
+    resolvedIcon = window._iconCache[building.id] || null;
+  }
+
+  if (resolvedIcon) {
+    return `<img class="art-img" src="${escapeHtml(resolvedIcon)}" alt="${escapeHtml(building.name)}" />`;
   }
 
   const palette = getBuildingPalette(building.rarity);
@@ -222,11 +228,16 @@ function renderBuildingShape(buildingId, token, palette) {
 }
 
 function renderCampusTileIllustration(cell, seed, customIcon) {
+  // Resolve file-extension icon refs from the shared client-side cache
+  let resolvedIcon = customIcon;
+  if (customIcon && typeof customIcon === "string" && !customIcon.startsWith("data:") && window._iconCache) {
+    resolvedIcon = window._iconCache[cell.building.id] || null;
+  }
   if (!cell.unlocked) {
     return renderLockedMountainIllustration(seed);
   }
   if (cell.building) {
-    return renderBuildingIllustration(cell.building, seed, "tile", customIcon);
+    return renderBuildingIllustration(cell.building, seed, "tile", resolvedIcon);
   }
   return renderOpenLandIllustration(seed);
 }
