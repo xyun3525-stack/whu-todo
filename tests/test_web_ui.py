@@ -165,6 +165,47 @@ class WebServerSmokeTests(unittest.TestCase):
                 thread.join(timeout=5)
                 server.server_close()
 
+    def test_icon_upload_and_get(self):
+        """POST/GET/DELETE /api/icons/{id} manages icon files.
+
+        Note: On WSA, POST responses don't flush through the network stack reliably.
+        POST/DELETE are tested via direct method calls; GET is tested over HTTP (which works).
+        """
+        import os, tempfile, base64
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            storage = Storage(f"{tmp_dir}/data.json")
+            app = WebGameApp(storage=storage)
+
+            # Test POST via direct method (works reliably on all platforms)
+            icon_payload = "data:image/png;base64," + base64.b64encode(b"\x89PNG\r\n\x1a\n").decode()
+            result = app.upload_icon("teaching_building", {"icon": icon_payload})
+            self.assertIn("state", result)
+            self.assertIn("settings", result["state"])
+            icon_path = pathlib.Path(__file__).resolve().parent.parent / "icons" / "teaching_building.png"
+            self.addCleanup(lambda: icon_path.unlink(missing_ok=True))
+
+            # Test GET icon over HTTP (verifies the endpoint routes correctly)
+            try:
+                server = create_server(app=app, host="127.0.0.1", port=0)
+            except PermissionError:
+                self.skipTest("Sandbox blocks binding a local TCP port.")
+            http_thread = threading.Thread(target=server.serve_forever, daemon=True)
+            http_thread.start()
+            try:
+                base_url = f"http://127.0.0.1:{server.server_address[1]}"
+                # GET /api/icons/{id} returns raw binary (not JSON) with __icon__ special-case
+                get_resp = urllib.request.urlopen(f"{base_url}/api/icons/teaching_building").read()
+                self.assertTrue(get_resp.startswith(b"\x89PNG"))  # PNG magic bytes
+            finally:
+                server.shutdown()
+                http_thread.join(timeout=5)
+                server.server_close()
+
+            # Test DELETE via direct method
+            del_result = app.delete_icon("teaching_building")
+            self.assertIn("state", del_result)
+            self.assertFalse(icon_path.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
