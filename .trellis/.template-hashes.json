@@ -1,0 +1,8 @@
+{
+  "__version": 2,
+  "hashes": {
+    ".trellis/scripts/common/trellis_config.py": "0839dcf90ebbd77712c276930a89335b3313927051650c91d220fb51ca2a6a3c",
+    ".trellis/scripts/common/safe_commit.py": "12702d7b7db2697ce18421b78ab45d135176072144bdc4998e41578fd0676d49",
+    ".trellis/config.yaml": "7ae2d8a7e73ebccd35340fdad5272142db4f7d5f3c56622e4a38e73f83c31685"
+  }
+}
