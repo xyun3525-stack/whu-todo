@@ -175,6 +175,28 @@ function bindEvents() {
     document.getElementById("import-building-types-file").click();
   });
   document.getElementById("import-building-types-file").addEventListener("change", handleImportBuildings);
+
+  // Event delegation for task actions (bound once, not per render)
+  document.getElementById("today-task-list").addEventListener("click", handleTaskAction);
+  document.getElementById("task-list").addEventListener("click", handleTaskAction);
+}
+
+async function handleTaskAction(e) {
+  const btn = e.target.closest("[data-complete-task]");
+  if (btn) { await completeTask(btn.dataset.completeTask); return; }
+  const editBtn = e.target.closest("[data-edit-task]");
+  if (editBtn) { beginEditTask(editBtn.dataset.editTask); return; }
+  const delBtn = e.target.closest("[data-delete-task]");
+  if (delBtn) {
+    if (!window.confirm("确认删除这个任务吗？")) return;
+    try {
+      const response = await mutate(`/api/tasks/${delBtn.dataset.deleteTask}`, "DELETE");
+      if (uiState.editingTaskId === delBtn.dataset.deleteTask) resetTaskForm();
+      showToast("任务已删除，5秒内可撤销。", 6000);
+      uiState._lastDeleteUndoId = delBtn.dataset.deleteTask;
+      uiState._lastDeleteUndoTs = Date.now();
+    } catch (error) { showToast(error.message); }
+  }
 }
 
 async function refreshState() {
@@ -620,8 +642,8 @@ async function handleIconUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  if (file.size > 2 * 1024 * 1024) {
-    showToast("图片大小不能超过 2MB。");
+  if (file.size > 3 * 1024 * 1024) {
+    showToast("图片大小不能超过 3MB。");
     event.target.value = "";
     return;
   }
@@ -1049,27 +1071,6 @@ function renderTaskCollection(containerId, tasks, options) {
       `;
     })
     .join("");
-
-  container.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-complete-task]");
-    if (btn) { completeTask(btn.dataset.completeTask); return; }
-    const editBtn = e.target.closest("[data-edit-task]");
-    if (editBtn) { beginEditTask(editBtn.dataset.editTask); return; }
-    const delBtn = e.target.closest("[data-delete-task]");
-    if (delBtn) {
-      if (!window.confirm("确认删除这个任务吗？")) return;
-      (async () => {
-        try {
-          const response = await mutate(`/api/tasks/${delBtn.dataset.deleteTask}`, "DELETE");
-          if (uiState.editingTaskId === delBtn.dataset.deleteTask) resetTaskForm();
-          showToast("任务已删除，5秒内可撤销。", 6000);
-          // Store undo info for Ctrl+Z shortcut
-          uiState._lastDeleteUndoId = delBtn.dataset.deleteTask;
-          uiState._lastDeleteUndoTs = Date.now();
-        } catch (error) { showToast(error.message); }
-      })();
-    }
-  });
 }
 
 function beginEditTask(taskId) {

@@ -39,7 +39,7 @@ BUILDINGS = {
     },
     "leijun_building": {
         "id": "leijun_building",
-        "name": "创新塔",
+        "name": "雷军楼",
         "emoji": "🌟",
         "rarity": "epic",
         "category": "landmark",

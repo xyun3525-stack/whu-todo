@@ -34,7 +34,7 @@ _logger.propagate = False
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 ICONS_DIR = Path(__file__).resolve().parent.parent / "icons"
 
-MAX_BODY_SIZE = 1_048_576  # 1 MB max request body
+MAX_BODY_SIZE = 5_242_880  # 5 MB max request body (accommodate data-URL-encoded images)
 _UNDO_DELAY_SECS = 5  # 5-second undo window for soft-delete
 
 
