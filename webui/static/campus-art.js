@@ -1,45 +1,48 @@
 const BUILDING_RARITY_PALETTES = {
+  // 红砖学院风 — 青灰坡顶 + 红褐砖墙 + 暖色基座
   common: {
-    skyTop: "#eef6e4",
-    skyBottom: "#fff6df",
-    glow: "rgba(128, 175, 101, 0.28)",
-    soil: "#af815d",
-    grass: "#89ba67",
-    grassShade: "#5d8e4c",
-    roof: "#4e7258",
-    wall: "#f7f0dd",
-    trim: "#c39b6b",
-    glass: "#b6d5dc",
-    accent: "#d2b06f",
-    shadow: "rgba(62, 74, 52, 0.18)",
+    skyTop: "#eaf3e8",
+    skyBottom: "#f7f0e0",
+    glow: "rgba(180, 140, 100, 0.18)",
+    soil: "#8a7a68",
+    grass: "#7fa87a",
+    grassShade: "#4a7a50",
+    roof: "#4a5a4a",
+    wall: "#8b4a3a",
+    trim: "#d4b896",
+    glass: "#b8c8d8",
+    accent: "#c4a060",
+    shadow: "rgba(50, 48, 40, 0.22)",
   },
+  // 石材学院风 — 暖色石材 + 白色线脚 + 深沉屋顶
   rare: {
-    skyTop: "#e3f0ff",
-    skyBottom: "#f7f0de",
-    glow: "rgba(70, 117, 194, 0.28)",
-    soil: "#9f7d66",
-    grass: "#78a78e",
-    grassShade: "#4a7463",
-    roof: "#3d587e",
-    wall: "#f4ede7",
-    trim: "#caa677",
-    glass: "#9fc7eb",
-    accent: "#5f8ede",
-    shadow: "rgba(37, 56, 88, 0.22)",
+    skyTop: "#e8eef0",
+    skyBottom: "#f2ede4",
+    glow: "rgba(160, 170, 150, 0.20)",
+    soil: "#8a7a68",
+    grass: "#6a9a70",
+    grassShade: "#3a6a44",
+    roof: "#3a4a3a",
+    wall: "#c4a882",
+    trim: "#e8d8c0",
+    glass: "#a0b8c8",
+    accent: "#b09868",
+    shadow: "rgba(60, 55, 48, 0.24)",
   },
+  // 地标殿堂级 — 琉璃碧瓦 + 朱红墙 + 金饰
   epic: {
-    skyTop: "#1f3356",
-    skyBottom: "#7a4d6c",
-    glow: "rgba(249, 208, 111, 0.3)",
-    soil: "#7e5061",
-    grass: "#597e83",
-    grassShade: "#334f5a",
-    roof: "#f3d37b",
-    wall: "#f6f0ea",
-    trim: "#ffd88a",
-    glass: "#9fd1eb",
-    accent: "#f1b848",
-    shadow: "rgba(16, 14, 26, 0.32)",
+    skyTop: "#d8e0e4",
+    skyBottom: "#ece4d8",
+    glow: "rgba(200, 175, 100, 0.22)",
+    soil: "#7a6a58",
+    grass: "#4a7a4a",
+    grassShade: "#2a5a34",
+    roof: "#2a3a2a",
+    wall: "#a04030",
+    trim: "#d4b860",
+    glass: "#90b0c8",
+    accent: "#d4a040",
+    shadow: "rgba(40, 35, 28, 0.30)",
   },
 };
 
@@ -122,106 +125,252 @@ function renderBuildingIllustration(building, seed, variant = "card", customIcon
 
 function renderBuildingShape(buildingId, token, palette) {
   switch (buildingId) {
+    // ── 教学楼 ──
+    // 中西合璧三段式对称立面：青灰坡顶 + 红砖墙 + 拱券门窗 + 石基座
     case "teaching_building":
       return `
         <g filter="url(#${token}-shadow)">
-          <path d="M42 78 L90 52 L138 78 L132 84 L48 84 Z" fill="${palette.roof}" />
-          <rect x="50" y="78" width="80" height="31" rx="8" fill="${palette.wall}" />
-          <rect x="74" y="66" width="32" height="13" rx="4" fill="${palette.trim}" />
-          <rect x="82" y="88" width="16" height="21" rx="5" fill="${palette.trim}" />
-          <g fill="url(#${token}-glass)">
-            <rect x="58" y="88" width="11" height="10" rx="2" />
-            <rect x="111" y="88" width="11" height="10" rx="2" />
-            <rect x="58" y="101" width="11" height="8" rx="2" />
-            <rect x="111" y="101" width="11" height="8" rx="2" />
-          </g>
-          <g fill="rgba(195,155,107,0.82)">
-            <rect x="72" y="80" width="4" height="21" rx="2" />
-            <rect x="78" y="80" width="4" height="21" rx="2" />
-            <rect x="98" y="80" width="4" height="21" rx="2" />
-            <rect x="104" y="80" width="4" height="21" rx="2" />
-          </g>
-          <ellipse cx="60" cy="108" rx="8" ry="5" fill="#5f8e4e" />
-          <ellipse cx="120" cy="108" rx="8" ry="5" fill="#5f8e4e" />
+          <!-- 基座台阶 -->
+          <path d="M44 112 H136 V118 H44 Z" fill="#9a8a78" />
+          <path d="M48 108 H132 V112 H48 Z" fill="#b8a898" />
+          <!-- 墙体 -->
+          <rect x="48" y="72" width="84" height="36" rx="3" fill="${palette.wall}" />
+          <!-- 墙体横向线脚装饰 -->
+          <rect x="48" y="86" width="84" height="2" fill="rgba(180,160,130,0.5)" />
+          <rect x="48" y="96" width="84" height="2" fill="rgba(180,160,130,0.5)" />
+          <!-- 中央拱门入口 -->
+          <path d="M76 108 V93 C76 86 84 82 90 82 C96 82 104 86 104 93 V108 Z" fill="#3a2a1a" />
+          <path d="M80 108 V95 C80 90 84 87 90 87 C96 87 100 90 100 95 V108 Z" fill="url(#${token}-glass)" />
+          <!-- 左右拱窗 -->
+          <path d="M56 108 V86 C56 80 62 76 67 76 C72 76 78 80 78 86 V108 Z" fill="#3a2a1a" />
+          <path d="M58 108 V88 C58 83 62 80 67 80 C72 80 76 83 76 88 V108 Z" fill="url(#${token}-glass)" />
+          <path d="M102 108 V86 C102 80 108 76 113 76 C118 76 124 80 124 86 V108 Z" fill="#3a2a1a" />
+          <path d="M104 108 V88 C104 83 108 80 113 80 C118 80 122 83 122 88 V108 Z" fill="url(#${token}-glass)" />
+          <!-- 屋檐线脚 -->
+          <rect x="46" y="69" width="88" height="4" rx="2" fill="${palette.trim}" />
+          <!-- 青灰色坡屋顶 -->
+          <path d="M36 69 L90 44 L144 69 L138 72 H42 Z" fill="#4a5a4a" />
+          <path d="M42 69 L90 47 L138 69 L132 72 H48 Z" fill="#5a6a5a" />
+          <!-- 屋脊装饰 -->
+          <path d="M86 44 H94 V42 H86 Z" fill="#3a4a3a" />
+          <!-- 屋顶两侧装饰挑檐 -->
+          <path d="M36 69 L33 67 L38 64 L42 69 Z" fill="#4a5a4a" />
+          <path d="M144 69 L147 67 L142 64 L138 69 Z" fill="#4a5a4a" />
+          <!-- 柱子（壁柱装饰） -->
+          <rect x="50" y="72" width="4" height="36" fill="rgba(180,160,130,0.6)" />
+          <rect x="126" y="72" width="4" height="36" fill="rgba(180,160,130,0.6)" />
+          <rect x="72" y="72" width="3" height="36" fill="rgba(180,160,130,0.4)" />
+          <rect x="105" y="72" width="3" height="36" fill="rgba(180,160,130,0.4)" />
         </g>
       `;
+    // ── 学院楼 ──
+    // 带塔楼元素、拱廊柱廊、庄重对称
     case "college_building":
       return `
         <g filter="url(#${token}-shadow)">
-          <rect x="38" y="63" width="40" height="46" rx="9" fill="${palette.wall}" />
-          <rect x="102" y="57" width="42" height="52" rx="9" fill="${palette.wall}" />
-          <rect x="74" y="74" width="34" height="20" rx="6" fill="${palette.accent}" opacity="0.88" />
-          <g fill="url(#${token}-glass)">
-            <rect x="44" y="71" width="10" height="10" rx="2" />
-            <rect x="58" y="71" width="10" height="10" rx="2" />
-            <rect x="44" y="85" width="10" height="10" rx="2" />
-            <rect x="58" y="85" width="10" height="10" rx="2" />
-            <rect x="108" y="66" width="10" height="10" rx="2" />
-            <rect x="122" y="66" width="10" height="10" rx="2" />
-            <rect x="108" y="81" width="10" height="10" rx="2" />
-            <rect x="122" y="81" width="10" height="10" rx="2" />
-            <rect x="108" y="96" width="10" height="10" rx="2" />
-            <rect x="122" y="96" width="10" height="10" rx="2" />
-          </g>
-          <path d="M34 63 H82 L74 56 H44 Z" fill="${palette.roof}" />
-          <path d="M98 57 H148 L141 49 H104 Z" fill="${palette.roof}" />
-          <rect x="85" y="94" width="12" height="15" rx="3" fill="${palette.trim}" />
-          <ellipse cx="30" cy="102" rx="7" ry="12" fill="#6d9a57" />
-          <ellipse cx="150" cy="102" rx="7" ry="12" fill="#6d9a57" />
+          <!-- 基座 -->
+          <path d="M34 112 H146 V118 H34 Z" fill="#8a7a68" />
+          <path d="M38 108 H142 V112 H38 Z" fill="#b0a090" />
+          <!-- 左翼墙 -->
+          <rect x="38" y="66" width="40" height="42" rx="3" fill="${palette.wall}" />
+          <!-- 右翼墙 -->
+          <rect x="102" y="60" width="42" height="48" rx="3" fill="${palette.wall}" />
+          <!-- 中央塔楼 -->
+          <rect x="72" y="52" width="38" height="56" rx="2" fill="${palette.wall}" />
+          <!-- 左翼屋顶 -->
+          <path d="M34 66 L58 48 L82 66 L78 69 H38 Z" fill="#4a5a4a" />
+          <path d="M38 66 L58 50 L78 66 L74 69 H42 Z" fill="#5a6a5a" />
+          <!-- 右翼屋顶 -->
+          <path d="M98 60 L123 42 L148 60 L144 63 H102 Z" fill="#4a5a4a" />
+          <path d="M102 60 L123 44 L144 60 L140 63 H106 Z" fill="#5a6a5a" />
+          <!-- 中央塔楼屋顶（更高） -->
+          <path d="M68 52 L91 30 L114 52 L110 55 H72 Z" fill="#3a4a3a" />
+          <path d="M72 52 L91 33 L110 52 L106 55 H76 Z" fill="#4a5a4a" />
+          <!-- 塔楼装饰尖顶 -->
+          <path d="M89 30 H93 V24 H89 Z" fill="#2a3a2a" />
+          <circle cx="91" cy="22" r="3" fill="#d4a850" />
+          <!-- 墙体线脚 -->
+          <rect x="38" y="82" width="40" height="2" fill="rgba(180,160,130,0.5)" />
+          <rect x="102" y="78" width="42" height="2" fill="rgba(180,160,130,0.5)" />
+          <rect x="72" y="70" width="38" height="2" fill="rgba(180,160,130,0.5)" />
+          <rect x="72" y="84" width="38" height="2" fill="rgba(180,160,130,0.5)" />
+          <!-- 拱形窗 - 左翼 -->
+          <path d="M46 108 V86 C46 82 50 79 54 79 C58 79 62 82 62 86 V108 Z" fill="#3a2a1a" />
+          <path d="M48 108 V88 C48 84 51 82 54 82 C57 82 60 84 60 88 V108 Z" fill="url(#${token}-glass)" />
+          <!-- 拱形窗 - 右翼 -->
+          <path d="M108 108 V84 C108 79 113 76 118 76 C123 76 128 79 128 84 V108 Z" fill="#3a2a1a" />
+          <path d="M110 108 V86 C110 82 114 80 118 80 C122 80 126 82 126 86 V108 Z" fill="url(#${token}-glass)" />
+          <!-- 塔楼拱窗 -->
+          <path d="M84 74 V60 C84 56 87 53 91 53 C95 53 98 56 98 60 V74 H84 Z" fill="#3a2a1a" />
+          <path d="M86 74 V62 C86 59 88 57 91 57 C94 57 96 59 96 62 V74 Z" fill="url(#${token}-glass)" />
+          <!-- 中央入口 -->
+          <rect x="84" y="96" width="14" height="12" rx="3" fill="${palette.trim}" />
+          <rect x="88" y="100" width="6" height="8" rx="2" fill="#3a2a1a" />
+          <!-- 壁柱装饰 -->
+          <rect x="40" y="66" width="3" height="42" fill="rgba(180,160,130,0.5)" />
+          <rect x="73" y="66" width="3" height="42" fill="rgba(180,160,130,0.5)" />
+          <rect x="106" y="66" width="3" height="42" fill="rgba(180,160,130,0.5)" />
         </g>
       `;
+    // ── 行政楼/办公楼 ──
+    // 新古典主义三角楣 + 柱廊 + 暖色石材
     case "office_building":
       return `
         <g filter="url(#${token}-shadow)">
-          <path d="M46 68 H136 L130 58 H54 Z" fill="${palette.roof}" />
-          <rect x="48" y="68" width="86" height="41" rx="10" fill="${palette.wall}" />
-          <rect x="72" y="83" width="38" height="14" rx="7" fill="${palette.trim}" opacity="0.85" />
-          <g fill="url(#${token}-glass)">
-            <rect x="58" y="77" width="12" height="8" rx="2" />
-            <rect x="74" y="77" width="12" height="8" rx="2" />
-            <rect x="90" y="77" width="12" height="8" rx="2" />
-            <rect x="106" y="77" width="12" height="8" rx="2" />
-            <rect x="58" y="91" width="12" height="8" rx="2" />
-            <rect x="106" y="91" width="12" height="8" rx="2" />
-          </g>
-          <rect x="84" y="90" width="14" height="19" rx="4" fill="${palette.accent}" />
-          <path d="M66 109 H117 L112 115 H71 Z" fill="rgba(255,255,255,0.45)" />
-          <ellipse cx="44" cy="108" rx="8" ry="5" fill="#729f5a" />
-          <ellipse cx="140" cy="108" rx="8" ry="5" fill="#729f5a" />
+          <!-- 基座 -->
+          <path d="M40 112 H140 V118 H40 Z" fill="#8a7a68" />
+          <path d="M44 108 H136 V112 H44 Z" fill="#b0a090" />
+          <!-- 主墙体（暖色石材） -->
+          <rect x="44" y="68" width="92" height="40" rx="3" fill="${palette.wall}" />
+          <!-- 墙体线脚 -->
+          <rect x="44" y="80" width="92" height="2" fill="rgba(200,185,165,0.5)" />
+          <rect x="44" y="90" width="92" height="2" fill="rgba(200,185,165,0.5)" />
+          <rect x="44" y="100" width="92" height="2" fill="rgba(200,185,165,0.5)" />
+          <!-- 三角楣/山花 -->
+          <path d="M40 68 L90 46 L140 68 Z" fill="${palette.roof}" />
+          <path d="M44 68 L90 49 L136 68 Z" fill="#5a6a5a" />
+          <!-- 三角楣内装饰 -->
+          <circle cx="90" cy="58" r="4" fill="rgba(220,200,175,0.6)" />
+          <!-- 柱廊（6根壁柱） -->
+          <rect x="46" y="68" width="3" height="40" fill="rgba(200,185,165,0.6)" rx="1" />
+          <rect x="60" y="68" width="3" height="40" fill="rgba(200,185,165,0.6)" rx="1" />
+          <rect x="78" y="68" width="3" height="40" fill="rgba(200,185,165,0.6)" rx="1" />
+          <rect x="99" y="68" width="3" height="40" fill="rgba(200,185,165,0.6)" rx="1" />
+          <rect x="117" y="68" width="3" height="40" fill="rgba(200,185,165,0.6)" rx="1" />
+          <rect x="131" y="68" width="3" height="40" fill="rgba(200,185,165,0.6)" rx="1" />
+          <!-- 拱窗 -->
+          <path d="M52 108 V86 C52 81 56 78 61 78 C66 78 70 81 70 86 V108 Z" fill="#3a2a1a" />
+          <path d="M54 108 V88 C54 84 57 82 61 82 C65 82 68 84 68 88 V108 Z" fill="url(#${token}-glass)" />
+          <path d="M82 108 V86 C82 81 86 78 90 78 C94 78 98 81 98 86 V108 Z" fill="#3a2a1a" />
+          <path d="M84 108 V88 C84 84 87 82 90 82 C93 82 96 84 96 88 V108 Z" fill="url(#${token}-glass)" />
+          <path d="M110 108 V86 C110 81 114 78 119 78 C124 78 128 81 128 86 V108 Z" fill="#3a2a1a" />
+          <path d="M112 108 V88 C112 84 115 82 119 82 C123 82 126 84 126 88 V108 Z" fill="url(#${token}-glass)" />
+          <!-- 中央入口 -->
+          <rect x="77" y="94" width="26" height="14" rx="4" fill="${palette.trim}" />
+          <rect x="82" y="98" width="16" height="10" rx="3" fill="#3a2a1a" />
         </g>
       `;
+    // ── 校门 ──
+    // 武大经典牌坊风格：石柱 + 拱券 + 青瓦顶 + 樱花
     case "school_gate":
       return `
         <g filter="url(#${token}-shadow)">
-          <path d="M43 109 H137 L131 116 H49 Z" fill="rgba(255,255,255,0.35)" />
-          <rect x="49" y="60" width="18" height="46" rx="6" fill="${palette.wall}" />
-          <rect x="113" y="60" width="18" height="46" rx="6" fill="${palette.wall}" />
-          <rect x="67" y="72" width="46" height="12" rx="4" fill="${palette.roof}" />
-          <path d="M67 106 V83 C67 71 75 64 90 64 C105 64 113 71 113 83 V106 Z" fill="${palette.wall}" />
-          <path d="M76 106 V86 C76 79 81 75 90 75 C99 75 104 79 104 86 V106 Z" fill="url(#${token}-glass)" />
-          <path d="M59 58 L90 45 L121 58 L114 64 H66 Z" fill="${palette.trim}" />
-          <circle cx="58" cy="56" r="4" fill="${palette.accent}" />
-          <circle cx="122" cy="56" r="4" fill="${palette.accent}" />
+          <!-- 基座 -->
+          <path d="M30 112 H150 V118 H30 Z" fill="#8a7a68" />
+          <!-- 路面 -->
+          <rect x="68" y="112" width="44" height="6" fill="#b8a890" />
+          <!-- 左立柱 -->
+          <rect x="42" y="64" width="16" height="48" rx="3" fill="${palette.wall}" />
+          <!-- 右立柱 -->
+          <rect x="122" y="64" width="16" height="48" rx="3" fill="${palette.wall}" />
+          <!-- 柱基座装饰 -->
+          <rect x="38" y="102" width="24" height="10" rx="2" fill="${palette.trim}" />
+          <rect x="118" y="102" width="24" height="10" rx="2" fill="${palette.trim}" />
+          <!-- 柱顶装饰 -->
+          <rect x="40" y="60" width="20" height="6" rx="2" fill="${palette.trim}" />
+          <rect x="120" y="60" width="20" height="6" rx="2" fill="${palette.trim}" />
+          <!-- 拱形门券 -->
+          <path d="M58 100 V74 C58 60 68 50 90 50 C112 50 122 60 122 74 V100 Z" fill="rgba(60,50,40,0.6)" />
+          <path d="M62 100 V76 C62 64 70 56 90 56 C110 56 118 64 118 76 V100 Z" fill="url(#${token}-glass)" opacity="0.5" />
+          <!-- 拱券装饰线 -->
+          <path d="M58 100 V74 C58 60 68 50 90 50 C112 50 122 60 122 74 V100" fill="none" stroke="${palette.trim}" stroke-width="2" />
+          <!-- 横额 -->
+          <rect x="58" y="70" width="64" height="8" rx="2" fill="${palette.trim}" opacity="0.8" />
+          <!-- 屋顶 -->
+          <path d="M34 56 L90 36 L146 56 L140 60 H40 Z" fill="#4a5a4a" />
+          <path d="M38 56 L90 39 L142 56 L136 60 H44 Z" fill="#5a6a5a" />
+          <!-- 屋脊装饰 -->
+          <path d="M86 36 H94 V32 H86 Z" fill="#3a4a3a" />
+          <!-- 屋顶挑檐 -->
+          <path d="M34 56 L30 54 L36 50 L42 56 Z" fill="#4a5a4a" />
+          <path d="M146 56 L150 54 L144 50 L138 56 Z" fill="#4a5a4a" />
+          <!-- 石狮子/石鼓（简化） -->
+          <ellipse cx="42" cy="110" rx="5" ry="4" fill="#b8a898" />
+          <ellipse cx="138" cy="110" rx="5" ry="4" fill="#b8a898" />
+          <!-- 左侧樱花 -->
+          <g transform="translate(20, 72)">
+            <path d="M0 36 L4 20 L8 12 L12 20 L16 36 Z" fill="#c48a8a" opacity="0.8" />
+            <path d="M4 20 Q2 16 6 14 Q10 16 8 12" fill="#e8b0b0" opacity="0.9" />
+            <path d="M8 12 Q6 8 10 6 Q14 8 12 12" fill="#e8c0c0" opacity="0.7" />
+            <circle cx="12" cy="10" r="3" fill="#f0d0d0" opacity="0.8" />
+            <circle cx="7" cy="14" r="2" fill="#f0d0d0" opacity="0.8" />
+          </g>
+          <!-- 右侧樱花 -->
+          <g transform="translate(144, 68)">
+            <path d="M0 40 L4 24 L8 16 L12 24 L16 40 Z" fill="#c48a8a" opacity="0.8" />
+            <path d="M4 24 Q2 20 6 18 Q10 20 8 16" fill="#e8b0b0" opacity="0.9" />
+            <path d="M8 16 Q6 12 10 10 Q14 12 12 16" fill="#e8c0c0" opacity="0.7" />
+            <circle cx="12" cy="14" r="3" fill="#f0d0d0" opacity="0.8" />
+            <circle cx="7" cy="18" r="2" fill="#f0d0d0" opacity="0.8" />
+          </g>
         </g>
       `;
+    // ── 雷军楼（地标建筑）──
+    // 武大老图书馆风格：钟塔 + 歇山顶 + 多层次退台 + 琉璃瓦
     case "leijun_building":
       return `
         <g filter="url(#${token}-shadow)">
-          <path d="M89 42 L100 52 L96 52 L101 109 H79 L84 52 H80 Z" fill="${palette.roof}" opacity="0.9" />
-          <path d="M70 110 L77 56 H103 L111 110 Z" fill="${palette.wall}" opacity="0.94" />
-          <path d="M78 58 H102 L97 26 H83 Z" fill="url(#${token}-glass)" />
-          <path d="M72 84 H109" stroke="${palette.trim}" stroke-width="3" stroke-linecap="round" />
-          <path d="M74 98 H107" stroke="${palette.trim}" stroke-width="3" stroke-linecap="round" />
-          <path d="M89 21 L93 30 L103 31 L95 37 L98 47 L89 41 L80 47 L83 37 L75 31 L85 30 Z" fill="${palette.accent}" />
-          <ellipse cx="90" cy="111" rx="25" ry="8" fill="rgba(255,255,255,0.34)" />
+          <!-- 基座台阶 -->
+          <path d="M30 114 H150 V120 H30 Z" fill="#9a8a78" />
+          <path d="M34 110 H146 V114 H34 Z" fill="#b8a898" />
+          <!-- 主楼体 -->
+          <rect x="52" y="62" width="76" height="48" rx="3" fill="${palette.wall}" />
+          <!-- 主楼屋顶（歇山顶） -->
+          <path d="M42 62 L90 36 L138 62 L132 66 H48 Z" fill="#3a4a3a" />
+          <path d="M48 62 L90 39 L132 62 L126 66 H54 Z" fill="#4a5a4a" />
+          <!-- 屋顶装饰脊 -->
+          <path d="M86 36 H94 V32 H86 Z" fill="#2a3a2a" />
+          <!-- 主楼墙体装饰线脚 -->
+          <rect x="52" y="74" width="76" height="2" fill="rgba(180,160,130,0.5)" />
+          <rect x="52" y="86" width="76" height="2" fill="rgba(180,160,130,0.5)" />
+          <rect x="52" y="96" width="76" height="2" fill="rgba(180,160,130,0.5)" />
+          <!-- 中央塔楼（钟塔） -->
+          <rect x="72" y="34" width="36" height="28" rx="2" fill="${palette.wall}" />
+          <!-- 塔楼屋顶（攒尖顶风格） -->
+          <path d="M68 34 L90 14 L112 34 L108 37 H72 Z" fill="#2a3a2a" />
+          <path d="M72 34 L90 17 L108 34 L104 37 H76 Z" fill="#3a4a3a" />
+          <!-- 塔顶尖顶 -->
+          <path d="M88 14 H92 V6 H88 Z" fill="#1a2a1a" />
+          <circle cx="90" cy="4" r="4" fill="#d4a850" />
+          <!-- 钟塔拱窗 -->
+          <path d="M84 38 V32 C84 29 87 27 90 27 C93 27 96 29 96 32 V38 H84 Z" fill="#3a2a1a" />
+          <path d="M86 38 V33 C86 31 88 30 90 30 C92 30 94 31 94 33 V38 Z" fill="url(#${token}-glass)" />
+          <!-- 塔楼线脚 -->
+          <rect x="72" y="44" width="36" height="2" fill="rgba(180,160,130,0.5)" />
+          <!-- 塔楼两侧小尖塔装饰 -->
+          <path d="M66 34 L70 26 L74 34 Z" fill="#3a4a3a" />
+          <path d="M106 34 L110 26 L114 34 Z" fill="#3a4a3a" />
+          <!-- 主楼拱形窗排 -->
+          <path d="M60 108 V84 C60 80 64 78 68 78 C72 78 76 80 76 84 V108 Z" fill="#3a2a1a" />
+          <path d="M62 108 V86 C62 83 65 81 68 81 C71 81 74 83 74 86 V108 Z" fill="url(#${token}-glass)" />
+          <path d="M84 108 V84 C84 80 88 78 90 78 C92 78 96 80 96 84 V108 Z" fill="#3a2a1a" />
+          <path d="M86 108 V86 C86 83 88 81 90 81 C92 81 94 83 94 86 V108 Z" fill="url(#${token}-glass)" />
+          <path d="M104 108 V84 C104 80 108 78 112 78 C116 78 120 80 120 84 V108 Z" fill="#3a2a1a" />
+          <path d="M106 108 V86 C106 83 109 81 112 81 C115 81 118 83 118 86 V108 Z" fill="url(#${token}-glass)" />
+          <!-- 中央入口大门 -->
+          <path d="M78 108 V96 C78 92 84 90 90 90 C96 90 102 92 102 96 V108 Z" fill="#3a2a1a" />
+          <path d="M82 108 V98 C82 95 86 94 90 94 C94 94 98 95 98 98 V108 Z" fill="url(#${token}-glass)" />
+          <!-- 壁柱装饰 -->
+          <rect x="54" y="62" width="3" height="48" fill="rgba(180,160,130,0.5)" />
+          <rect x="123" y="62" width="3" height="48" fill="rgba(180,160,130,0.5)" />
+          <!-- 栏杆/露台 -->
+          <rect x="56" y="60" width="68" height="3" rx="1" fill="rgba(200,185,165,0.6)" />
+          <rect x="56" y="60" width="2" height="6" fill="rgba(200,185,165,0.6)" />
+          <rect x="122" y="60" width="2" height="6" fill="rgba(200,185,165,0.6)" />
         </g>
       `;
     default:
       return `
         <g filter="url(#${token}-shadow)">
-          <rect x="60" y="64" width="60" height="42" rx="10" fill="${palette.wall}" />
-          <path d="M55 64 H125 L116 54 H64 Z" fill="${palette.roof}" />
-          <rect x="84" y="82" width="12" height="24" rx="3" fill="${palette.trim}" />
+          <!-- 默认通用建筑 -->
+          <path d="M46 112 H134 V118 H46 Z" fill="#9a8a78" />
+          <rect x="50" y="70" width="80" height="42" rx="3" fill="${palette.wall}" />
+          <rect x="50" y="82" width="80" height="2" fill="rgba(180,160,130,0.5)" />
+          <rect x="50" y="94" width="80" height="2" fill="rgba(180,160,130,0.5)" />
+          <path d="M44 70 L90 48 L136 70 L130 73 H50 Z" fill="#4a5a4a" />
+          <path d="M50 70 L90 51 L130 70 L124 73 H56 Z" fill="#5a6a5a" />
+          <rect x="80" y="94" width="20" height="18" rx="4" fill="${palette.trim}" />
+          <rect x="84" y="98" width="12" height="14" rx="2" fill="#3a2a1a" />
         </g>
       `;
   }
@@ -258,6 +407,49 @@ function _mtRand(state) {
 
 function renderOpenLandIllustration(seed) {
   const token = artToken(`${seed}-open`);
+  const rng = { s: _mtSeed(seed + "-open") };
+  const hasTree = _mtRand(rng) > 0.35;
+  const treeSide = _mtRand(rng) > 0.5 ? 'left' : 'right';
+  const lampSide = treeSide === 'left' ? 'right' : 'left';
+
+  const tree = hasTree ? (treeSide === 'left' ? `
+    <!-- 樱花树 -->
+    <g transform="translate(28, 58)">
+      <path d="M6 52 L6 20 Q6 14 10 12 Q14 14 14 20 L14 52" fill="none" stroke="#5a4a3a" stroke-width="3" />
+      <circle cx="10" cy="10" r="14" fill="#e8b8b8" opacity="0.85" />
+      <circle cx="6" cy="8" r="10" fill="#f0c8c8" opacity="0.7" />
+      <circle cx="14" cy="6" r="10" fill="#f0c8c8" opacity="0.7" />
+      <circle cx="10" cy="4" r="8" fill="#f5d8d8" opacity="0.6" />
+      <circle cx="10" cy="10" r="3" fill="#e0a0a0" opacity="0.5" />
+    </g>
+  ` : `
+    <g transform="translate(142, 54)">
+      <path d="M6 56 L6 24 Q6 18 10 16 Q14 18 14 24 L14 56" fill="none" stroke="#5a4a3a" stroke-width="3" />
+      <circle cx="10" cy="14" r="14" fill="#e8b8b8" opacity="0.85" />
+      <circle cx="6" cy="12" r="10" fill="#f0c8c8" opacity="0.7" />
+      <circle cx="14" cy="10" r="10" fill="#f0c8c8" opacity="0.7" />
+      <circle cx="10" cy="8" r="8" fill="#f5d8d8" opacity="0.6" />
+      <circle cx="10" cy="14" r="3" fill="#e0a0a0" opacity="0.5" />
+    </g>
+  `) : '';
+
+  const lamp = lampSide === 'left' ? `
+    <!-- 校园旧式路灯 -->
+    <g transform="translate(28, 70)">
+      <rect x="4" y="26" width="2" height="34" fill="#4a4a4a" />
+      <path d="M0 24 L10 24 L8 26 L2 26 Z" fill="#4a4a4a" />
+      <ellipse cx="5" cy="24" rx="6" ry="3" fill="#e8d8a0" opacity="0.7" />
+      <ellipse cx="5" cy="22" rx="4" ry="4" fill="#f0e8b8" opacity="0.35" />
+    </g>
+  ` : `
+    <g transform="translate(144, 72)">
+      <rect x="4" y="26" width="2" height="34" fill="#4a4a4a" />
+      <path d="M0 24 L10 24 L8 26 L2 26 Z" fill="#4a4a4a" />
+      <ellipse cx="5" cy="24" rx="6" ry="3" fill="#e8d8a0" opacity="0.7" />
+      <ellipse cx="5" cy="22" rx="4" ry="4" fill="#f0e8b8" opacity="0.35" />
+    </g>
+  `;
+
   return `
     <svg class="art-svg art-svg-tile" viewBox="0 0 180 140" aria-hidden="true" role="img">
       <defs>
@@ -274,11 +466,15 @@ function renderOpenLandIllustration(seed) {
       <ellipse cx="126" cy="24" rx="28" ry="12" fill="rgba(255, 214, 137, 0.36)" />
       <path d="M0 95 C34 71 66 70 95 80 C124 90 150 85 180 68 V140 H0 Z" fill="url(#${token}-hill)" />
       <path d="M0 108 C46 96 99 97 180 88 V140 H0 Z" fill="#8a6549" opacity="0.75" />
-      <path d="M69 113 C76 102 82 95 90 90 C100 95 106 102 112 114" fill="none" stroke="#ede4cb" stroke-width="8" stroke-linecap="round" />
-      <path d="M49 95 L57 78 L65 95 Z" fill="#5f8e4e" />
-      <path d="M122 100 L132 78 L142 100 Z" fill="#5f8e4e" />
-      <rect x="52" y="95" width="4" height="10" rx="2" fill="#745842" />
-      <rect x="129" y="100" width="4" height="10" rx="2" fill="#745842" />
+      ${tree}
+      ${lamp}
+      <!-- 石板小径 -->
+      <ellipse cx="90" cy="118" rx="12" ry="4" fill="rgba(180,165,145,0.5)" />
+      <ellipse cx="90" cy="112" rx="8" ry="3" fill="rgba(180,165,145,0.5)" />
+      <!-- 零星花瓣 -->
+      <circle cx="40" cy="124" r="1.5" fill="#f0c8c8" opacity="0.6" />
+      <circle cx="110" cy="128" r="1.5" fill="#f0c8c8" opacity="0.5" />
+      <circle cx="150" cy="120" r="1" fill="#f0c8c8" opacity="0.4" />
       <rect x="1.5" y="1.5" width="177" height="137" rx="26.5" fill="none" stroke="rgba(255,255,255,0.46)" />
     </svg>
   `;
