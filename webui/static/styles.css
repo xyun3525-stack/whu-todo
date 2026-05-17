@@ -554,6 +554,8 @@ select:focus {
   padding: 8px;
   border-radius: 28px;
   perspective: 900px;
+  perspective-origin: 50% 40%;
+  transform-style: preserve-3d;
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.5), transparent 24%),
     linear-gradient(180deg, rgba(234, 247, 235, 0.85), rgba(218, 234, 214, 0.72));
