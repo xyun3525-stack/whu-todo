@@ -7,3 +7,13 @@ htmlcov/
 *.egg-info/
 dist/
 build/
+
+# Local-only: desktop GUI
+gui.py
+ui/
+
+# Local-only: Trellis spec docs
+.trellis/spec/
+
+# Local-only: superpowers plans
+docs/superpowers/
