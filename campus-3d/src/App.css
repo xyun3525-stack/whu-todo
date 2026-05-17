@@ -1,0 +1,35 @@
+/* 全屏 3D 场景布局 */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body, #root { width: 100%; height: 100%; overflow: hidden; }
+
+.app-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #eaf3e8;
+}
+.scene-wrapper { width: 100%; height: 100%; }
+
+/* 场景上方半透明标题 */
+.ui-overlay {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  font-family: "Noto Serif SC", "Songti SC", Georgia, serif;
+}
+.ui-overlay h1 {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #3a4a3a;
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 3px rgba(255,255,255,0.6);
+}
+.ui-overlay .subtitle {
+  font-size: 0.85rem;
+  color: #6a7a5a;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
