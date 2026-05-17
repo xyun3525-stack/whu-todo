@@ -17,9 +17,18 @@ async function _ensureIcon(buildingId, iconRef) {
   if (iconRef.startsWith("data:")) return iconRef;
   if (_iconCache[buildingId]) return _iconCache[buildingId];
   try {
-    const data = await api(`/api/icons/${encodeURIComponent(buildingId)}`, "GET");
-    _iconCache[buildingId] = data.__icon__;
-    return _iconCache[buildingId];
+    // Icon GET returns binary image (not JSON), so we use fetch + FileReader directly
+    const response = await fetch(`/api/icons/${encodeURIComponent(buildingId)}`);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Failed to read icon blob"));
+      reader.readAsDataURL(blob);
+    });
+    _iconCache[buildingId] = dataUrl;
+    return dataUrl;
   } catch { return null; }
 }
 
