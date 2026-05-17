@@ -242,6 +242,20 @@ function renderCampusTileIllustration(cell, seed, customIcon) {
   return renderOpenLandIllustration(seed);
 }
 
+// Seeded pseudo-random for deterministic art variation
+function _mtSeed(seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = ((h << 5) - h) + seed.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
+}
+function _mtRand(state) {
+  state.s = (state.s * 1103515245 + 12345) & 0x7fffffff;
+  return state.s / 0x7fffffff;
+}
+
 function renderOpenLandIllustration(seed) {
   const token = artToken(`${seed}-open`);
   return `
@@ -270,35 +284,164 @@ function renderOpenLandIllustration(seed) {
   `;
 }
 
+/**
+ * Render a 3D topographic mountain for locked cells.
+ *
+ * Design: isometric-style layered peak with illuminated left face,
+ * shadowed right face, elevation contours, rock outcrops, and
+ * tree clusters — creating a "topographic wilderness" feel.
+ */
 function renderLockedMountainIllustration(seed) {
   const token = artToken(`${seed}-locked`);
+
+  // Seeded randomness for per-cell variation
+  const rng = { s: _mtSeed(seed + "-mtn") };
+  const peakHeight = 18 + _mtRand(rng) * 24;       // 18–42px peak Y offset
+  const peakShift = (_mtRand(rng) - 0.5) * 18;      // -9..+9 horizontal offset
+  const ridgeDepth = 0.3 + _mtRand(rng) * 0.4;      // ridge steepness
+  const snowLine = 0.3 + _mtRand(rng) * 0.2;         // snow cap threshold
+  const hasSnow = _mtRand(rng) > 0.45;
+  const treeCount = 2 + Math.floor(_mtRand(rng) * 4); // 2–5 trees
+
+  const cx = 90 + peakShift;
+  const cy = 24 + peakHeight;                       // peak apex
+  const bL = [10 + _mtRand(rng) * 14, 112];          // base-left
+  const bR = [170 - _mtRand(rng) * 14, 112];         // base-right
+  const bC = [90, 118];                               // base-center
+
+  const midL = [(cx + bL[0] * 2) / 3, ((cy + bL[1]) / 3) * 2 - 6];
+  const midR = [(cx + bR[0] * 2) / 3, ((cy + bR[1]) / 3) * 2 - 6];
+
+  // Left face (illuminated)
+  const leftFace = `M${cx},${cy} Q${(cx+bL[0])/2},${cy+10} ${bL[0]},${bL[1]} Q${(bL[0]+bC[0])/2},${bC[1]-8} ${bC[0]},${bC[1]} Q${(bC[0]+midL[0])/2},${bC[1]-10} ${midL[0]},${midL[1]} Q${(midL[0]+cx)/2},${cy+6} ${cx},${cy}Z`;
+
+  // Right face (shadowed)
+  const rightFace = `M${cx},${cy} Q${(cx+bR[0])/2},${cy+10} ${bR[0]},${bR[1]} Q${(bR[0]+bC[0])/2},${bC[1]-8} ${bC[0]},${bC[1]} Q${(bC[0]+midR[0])/2},${bC[1]-10} ${midR[0]},${midR[1]} Q${(midR[0]+cx)/2},${cy+6} ${cx},${cy}Z`;
+
+  // Snow cap
+  const snowH = cy + (bL[1] - cy) * snowLine;
+  const snowW = (cx - bL[0]) * (1 - snowLine) * 0.8;
+  const snowCap = hasSnow
+    ? `<path d="M${cx},${cy} Q${cx},${snowH} ${cx-snowW},${snowH+6} Q${cx-snowW*0.4},${snowH-4} ${cx},${snowH+2} Q${cx+snowW*0.4},${snowH-4} ${cx+snowW},${snowH+6} Q${cx},${snowH} ${cx},${cy}Z" fill="#eaf3e6" opacity="0.85" />`
+    : '';
+
+  // Contour lines
+  const contourSteps = 3;
+  let contours = '';
+  for (let i = 1; i <= contourSteps; i++) {
+    const t = i / (contourSteps + 1);
+    const cy2 = cy + (bL[1] - cy) * t;
+    const lx = cx - (cx - bL[0]) * t * 0.85;
+    const rx = cx + (bR[0] - cx) * t * 0.85;
+    const wobble = 2 + _mtRand(rng) * 3;
+    contours += `<path d="M${lx},${cy2} Q${cx},${cy2 - wobble} ${rx},${cy2}" fill="none" stroke="rgba(60,90,50,0.20)" stroke-width="1.5" />`;
+  }
+
+  // Trees at base — 3 cones clustered
+  let trees = '';
+  const treePositions = [];
+  for (let i = 0; i < treeCount; i++) {
+    const side = _mtRand(rng) > 0.5 ? 'left' : 'right';
+    const baseX = side === 'left'
+      ? bL[0] + _mtRand(rng) * (bC[0] - bL[0]) * 0.6
+      : bC[0] + _mtRand(rng) * (bR[0] - bC[0]) * 0.6;
+    const baseY = bL[1] - 4 + _mtRand(rng) * 6;
+    const size = 6 + _mtRand(rng) * 8;
+    treePositions.push({ x: baseX, y: baseY, size });
+  }
+  for (const t of treePositions) {
+    trees += `<path d="M${t.x},${t.y + t.size * 0.1} L${t.x - t.size * 0.4},${t.y + t.size * 0.1} L${t.x},${t.y - t.size * 0.6} L${t.x + t.size * 0.4},${t.y + t.size * 0.1} Z" fill="#3a6430" />`;
+    // Tree highlight
+    trees += `<path d="M${t.x},${t.y + t.size * 0.1} L${t.x - t.size * 0.15},${t.y + t.size * 0.1} L${t.x},${t.y - t.size * 0.5} Z" fill="#5a9040" opacity="0.7" />`;
+  }
+
+  // Rock outcrops
+  const rocks = [];
+  for (let i = 0; i < 2; i++) {
+    const side = _mtRand(rng) > 0.5 ? 'left' : 'right';
+    const rx = side === 'left'
+      ? bL[0] + _mtRand(rng) * (cx - bL[0]) * 0.7
+      : cx + _mtRand(rng) * (bR[0] - cx) * 0.7;
+    const ry = bL[1] - 10 - _mtRand(rng) * 20;
+    const rw = 4 + _mtRand(rng) * 6;
+    const rh = 3 + _mtRand(rng) * 4;
+    rocks.push({ x: rx, y: ry, w: rw, h: rh });
+  }
+  let rockEls = '';
+  for (const r of rocks) {
+    rockEls += `<path d="M${r.x},${r.y} L${r.x + r.w},${r.y - r.h * 0.3} L${r.x + r.w * 1.3},${r.y + r.h * 0.4} L${r.x + r.w * 0.3},${r.y + r.h} Z" fill="#7a6a5a" opacity="0.6" />`;
+  }
+
+  // Atmospheric fog overlay at the base
+  const fogGradId = `${token}-fog`;
+  const fog = `<rect x="0" y="${bL[1] - 16}" width="180" height="${140 - bL[1] + 16}" fill="url(#${fogGradId})" />`;
+
   return `
-    <svg class="art-svg art-svg-tile" viewBox="0 0 180 140" aria-hidden="true" role="img">
+    <svg class="art-svg art-svg-tile mountain-3d" viewBox="0 0 180 140" aria-hidden="true" role="img">
       <defs>
         <linearGradient id="${token}-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#d6ebdd" />
+          <stop offset="0%" stop-color="#c8dfcd" />
           <stop offset="100%" stop-color="#8fb57c" />
         </linearGradient>
-        <linearGradient id="${token}-ridge-a" x1="0" y1="0" x2="0.8" y2="1">
-          <stop offset="0%" stop-color="#9bb577" />
-          <stop offset="100%" stop-color="#5e7845" />
+        <linearGradient id="${token}-peak-left" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#a8cc8a" />
+          <stop offset="100%" stop-color="#7baa60" />
         </linearGradient>
-        <linearGradient id="${token}-ridge-b" x1="0" y1="0" x2="0.8" y2="1">
-          <stop offset="0%" stop-color="#789562" />
-          <stop offset="100%" stop-color="#415738" />
+        <linearGradient id="${token}-peak-right" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#689552" />
+          <stop offset="100%" stop-color="#3a6630" />
         </linearGradient>
+        <linearGradient id="${token}-base-left" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#8aba6e" />
+          <stop offset="100%" stop-color="#5d914b" />
+        </linearGradient>
+        <linearGradient id="${token}-base-right" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#558344" />
+          <stop offset="100%" stop-color="#2f5428" />
+        </linearGradient>
+        <linearGradient id="${fogGradId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#8fb57c" stop-opacity="0" />
+          <stop offset="100%" stop-color="#6d9460" stop-opacity="0.55" />
+        </linearGradient>
+        <filter id="${token}-drop-shadow" x="-10%" y="-10%" width="120%" height="140%">
+          <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="rgba(40,60,30,0.28)" />
+        </filter>
       </defs>
+
       <rect x="0" y="0" width="180" height="140" rx="28" fill="url(#${token}-sky)" />
-      <ellipse cx="133" cy="28" rx="26" ry="14" fill="rgba(245, 241, 219, 0.5)" />
-      <path d="M0 94 L40 58 L64 80 L95 40 L129 78 L155 56 L180 87 V140 H0 Z" fill="url(#${token}-ridge-a)" />
-      <path d="M0 106 L32 76 L56 97 L89 58 L120 94 L148 76 L180 100 V140 H0 Z" fill="url(#${token}-ridge-b)" />
-      <g fill="#3e5335">
-        <path d="M26 116 L33 94 L40 116 Z" />
-        <path d="M42 122 L50 98 L58 122 Z" />
-        <path d="M118 118 L126 92 L134 118 Z" />
-        <path d="M140 122 L148 99 L156 122 Z" />
+
+      <!-- Atmosphere glow -->
+      <ellipse cx="${cx}" cy="${cy}" rx="44" ry="22" fill="rgba(235,248,220,0.24)" />
+
+      <!-- Ground shadow cast by mountain -->
+      <ellipse cx="${bC[0]}" cy="${bC[1]}" rx="62" ry="10" fill="rgba(30,50,25,0.18)" filter="blur(3px)" />
+
+      <!-- Mountain body -->
+      <g filter="url(#${token}-drop-shadow)">
+        <!-- Illuminated left face (upper slope) -->
+        <path d="${leftFace}" fill="url(#${token}-peak-left)" />
+        <!-- Shadowed right face (upper slope) -->
+        <path d="${rightFace}" fill="url(#${token}-peak-right)" />
+
+        <!-- Base left face (lower slope, warmer green) -->
+        <path d="M${midL[0]},${midL[1]} Q${(midL[0]+bL[0])/2},${midL[1]+12} ${bL[0]},${bL[1]} Q${(bL[0]+bC[0])/2},${bC[1]-8} ${bC[0]},${bC[1]} Q${bC[0]},${bC[1]-8} ${midL[0]},${midL[1]}Z" fill="url(#${token}-base-left)" />
+        <!-- Base right face -->
+        <path d="M${midR[0]},${midR[1]} Q${(midR[0]+bR[0])/2},${midR[1]+12} ${bR[0]},${bR[1]} Q${(bR[0]+bC[0])/2},${bC[1]-8} ${bC[0]},${bC[1]} Q${bC[0]},${bC[1]-8} ${midR[0]},${midR[1]}Z" fill="url(#${token}-base-right)" />
       </g>
-      <rect x="1.5" y="1.5" width="177" height="137" rx="26.5" fill="none" stroke="rgba(255,255,255,0.34)" />
+
+      ${snowCap}
+      ${contours}
+
+      <!-- Rocks -->
+      ${rockEls}
+
+      <!-- Trees -->
+      ${trees}
+
+      <!-- Atmospheric fog -->
+      ${fog}
+
+      <rect x="1.5" y="1.5" width="177" height="137" rx="26.5" fill="none" stroke="rgba(255,255,255,0.32)" />
     </svg>
   `;
 }

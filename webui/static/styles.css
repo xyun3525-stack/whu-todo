@@ -553,6 +553,7 @@ select:focus {
   gap: 14px;
   padding: 8px;
   border-radius: 28px;
+  perspective: 900px;
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.5), transparent 24%),
     linear-gradient(180deg, rgba(234, 247, 235, 0.85), rgba(218, 234, 214, 0.72));
@@ -570,10 +571,29 @@ select:focus {
     inset 0 0 0 1px rgba(255, 255, 255, 0.3);
   padding: 0;
   text-align: left;
+  transform: translateZ(0);
+  transition: transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 400ms ease;
 }
 
 .campus-cell.locked {
   color: #f7f9ec;
+  transform: translateZ(18px) scale(1.04);
+  z-index: 2;
+  box-shadow:
+    0 20px 44px rgba(36, 58, 32, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.campus-cell.locked + .campus-cell.locked {
+  transform: translateZ(14px) scale(1.03);
+  z-index: 1;
+}
+
+.campus-cell.locked:hover {
+  transform: translateZ(26px) scale(1.06);
+  box-shadow:
+    0 28px 56px rgba(36, 58, 32, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.4);
 }
 
 .campus-cell.occupied {
